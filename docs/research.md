@@ -1,9 +1,11 @@
 # Research notes
 
 Status: approved by the owner on 2026-11-08 as research input to the design.
-Sources were checked on 2026-11-07. Approval does not mean runtime validation: no
-sleep-prevention experiment has been run. Source-based findings, inferences,
-uncertainties, and required verification remain distinguished below.
+Sources were checked on 2026-11-07, with follow-up investigations dated below.
+Approval does not mean runtime validation: no controlled sleep-prevention
+experiment has been run. A retrospective system-log observation is recorded
+below. Source-based findings, observations, inferences, uncertainties, and
+required verification remain distinguished.
 
 ## Sleep prevention
 
@@ -25,7 +27,8 @@ owner selected direct public macOS APIs rather than spawning this command.
 Apple documents that
 [idle system sleep prevention](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep)
 does not cover lid closure, explicit sleep, low battery, or every other cause of
-system sleep. The product must not promise to keep a closed MacBook awake.
+system sleep. These assertions alone do not establish the product's required
+closed-lid operation.
 
 [Idle display sleep prevention](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridledisplaysleep)
 does not itself turn on an already sleeping display. Preventing display sleep
@@ -189,8 +192,8 @@ requirement and findings; it is not an approved implementation or tested claim
 of support on the target Mac.
 
 - The owner wants background agents to continue with the MacBook lid closed
-  while running on battery. The existing idle-sleep assertions are insufficient
-  for this requirement. Apple's archived
+  while running on battery. The existing idle-sleep assertions do not guarantee
+  this requirement. Apple's archived
   [power-management release notes](https://developer.apple.com/library/archive/releasenotes/Darwin/RN-IOKitPowerManagment/index.html)
   explicitly distinguish assertions from forced lid-close sleep. This agrees
   with the limitation already recorded in the approved baseline.
@@ -290,3 +293,40 @@ local-development route using standard
 Its precise installation, caller authorization, recovery, and removal need a
 concrete reviewed design. The owner's acceptance of one-time setup does not
 select both routes or authorize their installation now.
+
+## Observation: hotspot visibility during closed-lid sleep
+
+On 2026-11-08, the owner reported that a MacBook remained visible as connected
+to a mobile hotspot after closing its lid with display-on `caffeinate` protection
+enabled, and suspected that Codex continued working. The exact interval of that
+observation has not been confirmed.
+
+A read-only review of the target Mac's `pmset -g log` found the following events
+on 2026-11-08. Times are Europe/Prague (UTC+01:00); the machine was previously
+identified as `MacBookPro17,1` running macOS 26.6.2.
+
+| Time | Recorded event |
+| --- | --- |
+| 11:53:44 | PID 84129 (`caffeinate`) created `PreventUserIdleDisplaySleep`. |
+| 11:54:21 | The same PID had both `PreventUserIdleSystemSleep` and `PreventUserIdleDisplaySleep` assertions. |
+| 11:54:25 | `Clamshell Sleep` on battery at 88%, with `TCPKeepAlive=active`. |
+| 12:03:41, 12:08:45, 12:11:32 | Dark wakes, each followed by maintenance sleep after 45 seconds. |
+| 12:17:49 | Another dark wake. |
+| 12:18:03 | Transition from dark wake to full wake due to `UserActivity Assertion`. |
+| 12:18:20 | Both assertions for PID 84129 were released with `ClientDied`. |
+
+This is evidence that closed-lid sleep occurred on battery despite both ordinary
+idle assertions in this instance. `TCPKeepAlive=active` appears in sleep entries;
+neither that flag nor visibility on a hotspot proves continuous application
+execution. The log does not establish what Codex executed during the interval,
+whether the hotspot showed a live connection throughout, or whether this was
+the interval the owner described. The exact command flags were not recovered.
+
+The observation supports the need to verify closed-lid operation separately
+from idle protection. It does not prove that a privileged helper is necessary,
+or validate the proposed system-wide override. Before choosing a mechanism,
+run a controlled test on battery without an external display, record actual
+local computation progress across lid closure, and correlate it with sleep/wake
+logs. Hotspot visibility and a running session countdown are insufficient
+acceptance evidence. No power settings were changed and no helper was installed
+for this review.
