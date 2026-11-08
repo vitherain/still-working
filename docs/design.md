@@ -1,4 +1,4 @@
-# Not Yet — design brief
+# StillWorking — design brief
 
 Status: approved by the owner on 2026-11-08, including the solution, routine
 behavior, scope, acceptance criteria, and implementation plan. Application
@@ -46,11 +46,11 @@ approved together with the implementation plan.
 
 | ID | Decision | Basis |
 | --- | --- | --- |
-| D1 | Initially use `/Users/vitherain/personal_dev/one-more-sip`; the project has since been renamed to `/Users/vitherain/personal_dev/not-yet`. | Round 1, Q1: A; subsequent owner rename. |
+| D1 | Initially use `/Users/vitherain/personal_dev/one-more-sip`; the project has since been renamed to `/Users/vitherain/personal_dev/still-working`. | Round 1, Q1: A; subsequent owner rename. |
 | D2 | Prioritize ordinary macOS users who do not use a terminal. | Round 1, Q2: A. |
 | D3 | Prepare the project and documentation before implementation; obtain explicit approval of the solution and implementation plan. | Initial brief. |
 | D4 | Initialize a local repository on `main` if the directory is outside any repository. | Initial brief; checked and completed. |
-| D5 | Initially defer GitHub setup. The repository now uses `https://github.com/vitherain/not-yet.git` as origin. Do not change global Git configuration. | Initial brief; subsequent repository setup. |
+| D5 | Initially defer GitHub setup. The repository now uses `https://github.com/vitherain/still-working.git` as origin. Do not change global Git configuration. | Initial brief; subsequent repository setup. |
 | D6 | Build a new, simple product despite the known overlap with existing tools; prioritize understandable interaction and execution. | Round 2, Q3: A. |
 | D7 | Give background-work and display-on scenarios equal first-release priority. | Round 2, Q4: C. |
 | D8 | Deliver a menu bar application first; defer any standalone CLI. | Round 3, Q5: A. |
@@ -65,10 +65,11 @@ approved together with the implementation plan.
 | D17 | Count actual system sleep toward the session duration. On wake, continue only the unexpired remainder; if the duration elapsed during sleep, the session is finished. Do not wake the Mac at expiry. | Round 6, Q14: A. |
 | D18 | After an application crash or Mac restart, open inactive with remembered input selections. Do not restore an interrupted session automatically or offer recovery. | Round 6, Q15: A. |
 | D19 | Complete silently: remove the countdown, show an inactive icon, and expose completion status in the menu/panel. Keep the app available for another session; no completion sound or system notification. | Round 6, Q16: A. |
-| D20 | Name the first local application Not Yet. The local directory is now `not-yet`; check public name availability during the distribution milestone. | Round 7, Q17: B; subsequent owner rename. |
+| D20 | Originally select the name Not Yet; this naming decision is superseded by D24. | Round 7, Q17: B; subsequent owner rename. |
 | D21 | Use a native Swift/SwiftUI application with direct public macOS power-management APIs, rather than spawning `caffeinate`; AppKit may supplement SwiftUI. | Round 7, Q18: A. |
 | D22 | Use the MIT license, permitting reuse including closed-source derivatives subject to its terms. | Round 7, Q19: A. |
 | D23 | Approve all resources produced during grilling, including the routine details and completion criteria, and record the approval with a commit and push. | Explicit owner instruction, 2026-11-08. |
+| D24 | Rename the product to StillWorking, the GitHub repository to `vitherain/still-working`, and the local directory to `/Users/vitherain/personal_dev/still-working`. Preserve repository identity/history and the pending closed-lid scope extension. | Explicit owner instruction, 2026-11-08. |
 
 At project setup, the directory was empty and outside any Git repository. It was
 initialized on `main`; the initial documentation and agent configuration have
@@ -134,9 +135,8 @@ as a public-ready release. No Developer Program purchase has been authorized.
 
 ## Approved implementation details and deferred concepts
 
-- Any future CLI command `moresip`, duration syntax such as `30m` / `2h`, a
-  `--screen` option, and `status` / `stop` subcommands. A CLI is outside the first
-  milestone, and its eventual command name is open after the product rename.
+- A future CLI is outside the first milestone; its eventual command name and
+  syntax remain undecided.
 - Exact panel layout, display toggle wording, countdown format, local build
   setup, and stop/replacement controls are specified in the approved plan.
 - Use a sleep-inclusive monotonic deadline with wake reconciliation and a
@@ -241,7 +241,7 @@ in effect.
 Requested by the owner after baseline approval and before publishing the
 consolidated specification on 2026-11-08.
 
-The owner needs Not Yet to prevent a MacBook from sleeping when its lid is
+The owner needs StillWorking to prevent a MacBook from sleeping when its lid is
 closed while disconnected from the power adapter, so background work such as
 agent runs can continue. This is an additional requirement beyond the approved
 idle-sleep modes; do not interpret the prior closed-lid exclusion as dismissal

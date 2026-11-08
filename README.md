@@ -1,4 +1,4 @@
-# Not Yet
+# StillWorking
 
 An open-source macOS tool being designed to temporarily prevent automatic sleep,
 with a choice of allowing or preventing automatic display sleep.
@@ -7,8 +7,8 @@ The primary audience is people who do not use a terminal. The first milestone is
 a locally usable menu bar application on the owner's Mac, with display-on mode
 initially selected. A standalone CLI and public distribution are deferred. The
 planned application will use Swift/SwiftUI and public macOS power APIs directly.
-The project is licensed under [MIT](LICENSE). The local directory is `not-yet`,
-renamed from the original working name `one-more-sip`.
+The project is licensed under [MIT](LICENSE). The local directory and GitHub
+repository are named `still-working`.
 
 Status: all resources produced during grilling were approved by the owner on
 2026-11-08: this project overview, the design brief, research notes, glossary,

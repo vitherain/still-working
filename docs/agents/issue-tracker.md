@@ -1,17 +1,17 @@
 # Issue tracker: GitHub
 
-Issues and specs live at https://github.com/vitherain/not-yet/issues.
-Use the `gh` CLI with `--repo vitherain/not-yet` explicitly,
+Issues and specs live at https://github.com/vitherain/still-working/issues.
+Use the `gh` CLI with `--repo vitherain/still-working` explicitly,
 including when no Git remote is configured.
 
 ## Operations
 
-- Create: `gh issue create --repo vitherain/not-yet --title "..." --body-file <path>`
-- Read: `gh issue view <number> --repo vitherain/not-yet --comments`
-- List: `gh issue list --repo vitherain/not-yet --state open --json number,title,body,labels,assignees`
-- Comment: `gh issue comment <number> --repo vitherain/not-yet --body-file <path>`
-- Add or remove labels: `gh issue edit <number> --repo vitherain/not-yet --add-label "..."` or `--remove-label "..."`
-- Close: `gh issue close <number> --repo vitherain/not-yet --comment "..."`
+- Create: `gh issue create --repo vitherain/still-working --title "..." --body-file <path>`
+- Read: `gh issue view <number> --repo vitherain/still-working --comments`
+- List: `gh issue list --repo vitherain/still-working --state open --json number,title,body,labels,assignees`
+- Comment: `gh issue comment <number> --repo vitherain/still-working --body-file <path>`
+- Add or remove labels: `gh issue edit <number> --repo vitherain/still-working --add-label "..."` or `--remove-label "..."`
+- Close: `gh issue close <number> --repo vitherain/still-working --comment "..."`
 
 For multiline bodies, write the exact Markdown to a temporary file
 and pass it with `--body-file`.

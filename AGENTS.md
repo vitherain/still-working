@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Work is tracked in GitHub Issues for `vitherain/not-yet`.
+Work is tracked in GitHub Issues for `vitherain/still-working`.
 Before reading or publishing issues, read `docs/agents/issue-tracker.md`.
 
 ### Domain docs

@@ -199,7 +199,7 @@ of support on the target Mac.
   an application script, and a sudoers configuration. It documents Apple Silicon
   closed-display issues on external-power transitions. This is primary evidence
   that comparable behavior requires extra mechanisms in that application, not
-  evidence that Not Yet's unmodified baseline can provide it.
+  evidence that StillWorking's unmodified baseline can provide it.
 - The maintainer's
   [closed-display fail-safe source](https://github.com/x74353/Amphetamine-Enhancer/blob/master/Xcode%20Project/Amphetamine%20Enhancer/Scripts/amphetamine-enhancer-cdmManager.sh)
   checks application/session presence and triggers restoration when protection

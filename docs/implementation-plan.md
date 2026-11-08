@@ -1,4 +1,4 @@
-# Not Yet — solution and implementation plan
+# StillWorking — solution and implementation plan
 
 Status: approved by the owner on 2026-11-08, including the shared understanding,
 interaction details, architecture, implementation sequence, and acceptance
@@ -9,7 +9,7 @@ Platform evidence is in [research notes](research.md).
 
 ## Intended result
 
-A small English-language menu bar application, `Not Yet.app`, built locally on
+A small English-language menu bar application, `StillWorking.app`, built locally on
 the owner's Mac. It offers finite sessions, a display-mode choice, a countdown,
 replacement, and early stop. It uses Swift/SwiftUI and public macOS power APIs,
 under the MIT license. AppKit may supplement SwiftUI.
