@@ -1,6 +1,8 @@
 # Not Yet — design brief
 
-Status: design ready for owner review. No implementation has been approved.
+Status: approved by the owner on 2026-11-08, including the solution, routine
+behavior, scope, acceptance criteria, and implementation plan. Application
+implementation has not started.
 Discussion is in Czech; repository content is in English.
 
 ## Goal and primary audience
@@ -26,8 +28,8 @@ behavior and do not prescribe the final UI wording.
 
 ## Requirements from the initial brief
 
-These are explicit owner needs. Detailed first-release behavior remains to be
-agreed; this list is not an approved implementation specification.
+These explicit owner needs and the detailed local-milestone behavior below are
+approved together with the implementation plan.
 
 - Prevent automatic computer sleep for a duration expressed in minutes or hours.
 - Let the user choose whether the display may turn off automatically or should
@@ -44,11 +46,11 @@ agreed; this list is not an approved implementation specification.
 
 | ID | Decision | Basis |
 | --- | --- | --- |
-| D1 | Use `/Users/vitherain/personal_dev/one-more-sip` as the local project directory. | Round 1, Q1: A. |
+| D1 | Initially use `/Users/vitherain/personal_dev/one-more-sip`; the project has since been renamed to `/Users/vitherain/personal_dev/not-yet`. | Round 1, Q1: A; subsequent owner rename. |
 | D2 | Prioritize ordinary macOS users who do not use a terminal. | Round 1, Q2: A. |
 | D3 | Prepare the project and documentation before implementation; obtain explicit approval of the solution and implementation plan. | Initial brief. |
 | D4 | Initialize a local repository on `main` if the directory is outside any repository. | Initial brief; checked and completed. |
-| D5 | Defer GitHub repository creation, visibility, and remote configuration. Do not change global Git configuration. | Initial brief. |
+| D5 | Initially defer GitHub setup. The repository now uses `https://github.com/vitherain/not-yet.git` as origin. Do not change global Git configuration. | Initial brief; subsequent repository setup. |
 | D6 | Build a new, simple product despite the known overlap with existing tools; prioritize understandable interaction and execution. | Round 2, Q3: A. |
 | D7 | Give background-work and display-on scenarios equal first-release priority. | Round 2, Q4: C. |
 | D8 | Deliver a menu bar application first; defer any standalone CLI. | Round 3, Q5: A. |
@@ -63,30 +65,33 @@ agreed; this list is not an approved implementation specification.
 | D17 | Count actual system sleep toward the session duration. On wake, continue only the unexpired remainder; if the duration elapsed during sleep, the session is finished. Do not wake the Mac at expiry. | Round 6, Q14: A. |
 | D18 | After an application crash or Mac restart, open inactive with remembered input selections. Do not restore an interrupted session automatically or offer recovery. | Round 6, Q15: A. |
 | D19 | Complete silently: remove the countdown, show an inactive icon, and expose completion status in the menu/panel. Keep the app available for another session; no completion sound or system notification. | Round 6, Q16: A. |
-| D20 | Name the first local application Not Yet. Keep the approved local directory `one-more-sip`; check public name availability during the distribution milestone. | Round 7, Q17: B. |
+| D20 | Name the first local application Not Yet. The local directory is now `not-yet`; check public name availability during the distribution milestone. | Round 7, Q17: B; subsequent owner rename. |
 | D21 | Use a native Swift/SwiftUI application with direct public macOS power-management APIs, rather than spawning `caffeinate`; AppKit may supplement SwiftUI. | Round 7, Q18: A. |
 | D22 | Use the MIT license, permitting reuse including closed-source derivatives subject to its terms. | Round 7, Q19: A. |
+| D23 | Approve all resources produced during grilling, including the routine details and completion criteria, and record the approval with a commit and push. | Explicit owner instruction, 2026-11-08. |
 
-The directory existed and was empty, with no enclosing Git repository. A local
-repository has been initialized on `main`; no commit has been made.
+At project setup, the directory was empty and outside any Git repository. It was
+initialized on `main`; the initial documentation and agent configuration have
+since been committed and the GitHub origin configured.
 
 ## First milestone scope
 
 Deliver a locally usable menu bar application on the owner's Mac, with finite
 sessions, both display modes, active status, remaining time, and early stop.
 Display-on mode is the initial selection. Confirmed behavior is recorded here;
-remaining routine details and the work sequence are proposed in the
-[solution and implementation plan](implementation-plan.md) for owner approval.
+routine details and the work sequence are specified in the approved
+[solution and implementation plan](implementation-plan.md).
 
 Duration selection includes presets and custom hours/minutes. While active, the
 menu bar shows a distinct active icon and countdown. Opening its menu/panel shows
-the current display mode and a stop control. The exact visual layout is open.
+the current display mode and a stop control. The panel layout is specified in
+the approved plan; visual polish may be refined without changing behavior.
 
 To change an active session, the user explicitly replaces it: with 20 minutes
 remaining, replacing it with 30 minutes means 30 minutes from replacement, not
 50 minutes. The replacement uses the newly selected display mode. Replacement
 must not create multiple concurrent sessions. On failure, preserving the old
-valid session and reporting the failure is proposed in the plan.
+valid session and reporting the failure is required by the approved plan.
 
 ### Duration and remembered selections
 
@@ -102,19 +107,18 @@ valid session and reporting the failure is proposed in the plan.
 Dismissal of the menu/panel leaves the application and current session running.
 Explicit quit ends the session, releases this application's protection, and
 removes its menu bar item. When active, the quit action should clearly describe
-both effects (for example, "Stop Timer and Quit"); exact UI copy is not final.
+both effects ("Stop Timer and Quit" in the approved plan).
 
 The session's duration includes actual system sleep. With 20 minutes remaining,
 sleeping for 5 minutes leaves 15 minutes after waking; sleeping for 30 minutes
 means the session is finished on wake. The app does not wake the Mac at expiry.
-Measure elapsed time independently of system clock adjustments; the precise
-technical mechanism is still proposed rather than approved.
+Measure elapsed time independently of system clock adjustments using the
+approved ContinuousClock deadline and wake reconciliation.
 
 After a crash or restart, the application opens inactive and offers the last used
 duration/mode for a new manual start. It does not recover the interrupted session.
 No detached timer continuing after an intentional quit is part of this milestone.
-Repeated-open and terminal-independence rules remain explicit recommendations
-for final plan review below.
+Repeated-open and terminal-independence rules are approved below.
 
 On natural completion, remove the countdown, switch to the inactive icon, and
 show completion status when the menu/panel is opened. The app stays available
@@ -128,21 +132,21 @@ signing, notarization, release updates, and associated costs remain open for a
 later distribution milestone. A working local application must not be described
 as a public-ready release. No Developer Program purchase has been authorized.
 
-## Proposals awaiting final plan approval
+## Approved implementation details and deferred concepts
 
 - Any future CLI command `moresip`, duration syntax such as `30m` / `2h`, a
   `--screen` option, and `status` / `stop` subcommands. A CLI is outside the first
   milestone, and its eventual command name is open after the product rename.
 - Exact panel layout, display toggle wording, countdown format, local build
-  setup, and stop/replacement control presentation are made concrete in the plan.
+  setup, and stop/replacement controls are specified in the approved plan.
 - Use a sleep-inclusive monotonic deadline with wake reconciliation and a
   system-managed assertion timeout as an additional safeguard; verify timeout
   behavior rather than relying on it as the timer's source of truth.
 
-### Recommended routine behavior for plan review
+### Approved routine behavior
 
-These recommendations are pending approval of the final solution and plan;
-they are not additional confirmed owner decisions.
+The owner approved these details together with the solution and implementation
+plan on 2026-11-08.
 
 - Reopening an already running application reveals its existing menu/panel and
   session without starting, replacing, or extending anything. Replacement
@@ -163,9 +167,9 @@ they are not additional confirmed owner decisions.
 
 ## Remaining questions and deferred decisions
 
-The product decisions for the local milestone have been answered. The proposed
-routine details, solution, acceptance criteria, and implementation plan still
-require explicit owner approval before coding.
+The product decisions, routine details, solution, acceptance criteria, and
+implementation plan for the local milestone are approved. No further design
+approval is pending before implementation.
 
 Implementation must verify native timeout behavior across sleep/wake, process
 exit cleanup, and display/screen-saver/locking behavior on the target Mac. These
@@ -173,14 +177,14 @@ are technical verification tasks, not unanswered user-preference questions.
 Do not promise prevention of forced sleep or lid-close sleep, or unchanged
 automatic locking in every configuration.
 
-Public distribution remains explicitly deferred: public name availability,
-GitHub repository/visibility/remote, broader macOS/hardware support, download
-format, installation on another Mac, Developer ID/notarization, membership cost,
-and release/update process. None blocks a local implementation once approved.
+The source repository and origin already exist. Application distribution remains
+explicitly deferred: public name availability, broader macOS/hardware support,
+download format, installation on another Mac, Developer ID/notarization, membership cost,
+and release/update process. None blocks the approved local implementation.
 
-## Draft observable completion criteria
+## Approved observable completion criteria
 
-Derived from the initial brief; to be refined and explicitly approved.
+Approved by the owner on 2026-11-08 together with the implementation plan.
 
 1. On the owner's Mac, a non-terminal user can start a finite duration from the
    menu bar application without editing shell files or running terminal commands
@@ -203,7 +207,7 @@ Derived from the initial brief; to be refined and explicitly approved.
 8. All five presets and custom hours/minutes can start a session. Custom input
    accepts 1 minute and 168 hours, includes intermediate whole-minute durations,
    and rejects values outside that range. Inline feedback and disabled start/
-   replacement for invalid input are proposed in the implementation plan.
+   replacement for invalid input are required by the approved implementation plan.
 9. Replacing a session with 20 minutes remaining by a 30-minute session produces
    one session with 30 minutes remaining, using the newly selected display mode.
 10. First use preselects 30 minutes and display-on mode. After successfully using
@@ -220,10 +224,14 @@ Derived from the initial brief; to be refined and explicitly approved.
     icon; the menu/panel reports completion. No completion sound or notification
     permission request occurs, and the app stays open for another manual start.
 
-## Approval gate
+## Approval record
 
-Review the [solution and implementation plan](implementation-plan.md), including
-the routine recommendations and acceptance criteria. The owner must confirm a
-shared understanding and authorize implementation. Until then, only project
-preparation and documentation are authorized. Recommendations do not become
-confirmed owner decisions merely by being written down.
+On 2026-11-08 the owner explicitly instructed: "Mark all resources produced
+during grilling as approved. Then commit and push." This approves this brief,
+the [solution and implementation plan](implementation-plan.md), completion
+criteria, project overview, glossary, research notes, and MIT license.
+
+Approval is recorded for future implementation; this change records approval and
+publishes documentation only. No application code, build, or runtime verification
+has been performed. Deferred distribution decisions and research caveats remain
+in effect.

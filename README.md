@@ -7,17 +7,23 @@ The primary audience is people who do not use a terminal. The first milestone is
 a locally usable menu bar application on the owner's Mac, with display-on mode
 initially selected. A standalone CLI and public distribution are deferred. The
 planned application will use Swift/SwiftUI and public macOS power APIs directly.
-The project is licensed under [MIT](LICENSE). The local directory retains its
-original working name, `one-more-sip`.
+The project is licensed under [MIT](LICENSE). The local directory is `not-yet`,
+renamed from the original working name `one-more-sip`.
 
-This repository currently contains design documentation only:
+Status: all resources produced during grilling were approved by the owner on
+2026-11-08: this project overview, the design brief, research notes, glossary,
+solution and implementation plan, and MIT license. Research caveats and required
+runtime verification remain in effect. No application code has been created.
+
+This repository currently contains design documentation and the license:
 
 - [Design brief](docs/design.md): requirements, confirmed decisions, open questions,
-  and draft completion criteria.
+  and approved completion criteria.
 - [Research notes](docs/research.md): verified platform capabilities, limitations,
   comparable tools, and distribution constraints.
 - [Glossary](GLOSSARY.md): shared terms for sessions and display modes.
 - [Solution and implementation plan](docs/implementation-plan.md): concrete
-  proposed behavior, architecture, work sequence, and verification.
+  approved behavior, architecture, work sequence, and verification.
 
-Implementation will begin only after the owner approves the solution and plan.
+The solution and implementation plan are approved for implementation. This
+approval-recording change does not start application development.

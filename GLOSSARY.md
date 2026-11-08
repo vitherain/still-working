@@ -1,7 +1,9 @@
 # Temporary sleep prevention
 
+Status: approved by the owner on 2026-11-08.
+
 Terms for the timed macOS sleep-prevention experience. Mode names here describe
-the domain; final user-facing labels remain undecided.
+the domain; user-facing wording is specified in the approved implementation plan.
 
 ## Language
 

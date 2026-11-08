@@ -1,8 +1,8 @@
 # Not Yet — solution and implementation plan
 
-Status: proposed for owner approval. No application code or build configuration
-has been created. Approval must cover the shared understanding, the proposed
-details below, and permission to begin implementation.
+Status: approved by the owner on 2026-11-08, including the shared understanding,
+interaction details, architecture, implementation sequence, and acceptance
+criteria. No application code or build configuration has been created.
 
 Confirmed decisions and interview references are in the [design brief](design.md).
 Platform evidence is in [research notes](research.md).
@@ -18,10 +18,10 @@ Complete the first milestone by delivering the local app and documented
 build/launch steps with the acceptance checks below. Public distribution, a CLI,
 and GitHub setup are outside this milestone.
 
-## Proposed interaction details
+## Approved interaction details
 
-These details complete the confirmed requirements and await approval with this
-plan. Text and visual polish may be refined without changing behavior.
+These approved details complete the confirmed requirements. Text and visual
+polish may be refined without changing behavior.
 
 ### Panel and menu bar
 
@@ -77,21 +77,21 @@ plan. Text and visual polish may be refined without changing behavior.
 - Closing a terminal does not affect this independently launched application.
   No shell setup, administrator helper, or background daemon is included.
 
-## Proposed technical solution
+## Approved technical solution
 
 ### Local project and interface
 
 Use a standard Xcode project with one macOS app target and a focused unit-test
 target. Use Apple frameworks without external packages or a project generator.
 
-Propose macOS 13 as the API/deployment baseline for `ContinuousClock`. Verify on
+Use macOS 13 as the API/deployment baseline for `ContinuousClock`. Verify on
 the owner's macOS 26.6.2 arm64 machine with the installed Xcode/SDK. This does not
 constitute tested support for other macOS releases or Intel Macs.
 
 Use an AppKit `NSStatusItem`, `NSPopover`, and application delegate, with a SwiftUI
 panel hosted by `NSHostingController`. This small integration supports explicit
 reopen through public APIs. Pure SwiftUI `MenuBarExtra` has no public presentation
-binding on the proposed baseline, making the exact reopen behavior less direct.
+binding on the selected baseline, making the exact reopen behavior less direct.
 Use `LSUIElement` metadata for menu bar agent behavior.
 
 Produce a local `.app` with local/ad-hoc signing as required by the toolchain.
@@ -148,8 +148,10 @@ observations reveal a mismatch with the confirmed elapsed-time rule.
    fix task-caused regressions, and record working build/launch instructions,
    observed limitations, and any unexecuted checks.
 
-These steps do not authorize coding before approval. No commit, Git configuration
-change, remote setup, or publication is included.
+This implementation sequence is approved. The current owner request covers
+recording that approval, committing it, and pushing to the configured origin;
+application implementation has not started. Do not change global Git configuration
+or treat this documentation push as an application release.
 
 ## Verification and completion criteria
 
@@ -180,12 +182,14 @@ rather than claiming full milestone completion.
 
 ## Explicitly later
 
-Public name checks, GitHub setup/visibility/remote, CLI and command naming,
-localization beyond English, automatic login launch, indefinite/scheduled
+Public name checks, CLI and command naming, localization beyond English,
+automatic login launch, indefinite/scheduled
 sessions, broader compatibility promises, download packaging, notarization,
 Developer Program costs, and public update delivery are outside this plan.
 
 ## Approval record
 
-Awaiting owner confirmation. No coding has started. Confirmed interview answers
-remain separate from proposed routine details until the owner approves the plan.
+Approved on 2026-11-08 by the owner's explicit instruction to mark all resources
+produced during grilling as approved, then commit and push. This includes the
+routine details and verification criteria in this plan. Approval is complete;
+implementation and all runtime checks remain to be carried out.

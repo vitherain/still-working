@@ -1,7 +1,9 @@
 # Research notes
 
-Checked on 2026-11-07. These are platform facts and design implications, not
-accepted product decisions. No runtime sleep-prevention experiment has been run.
+Status: approved by the owner on 2026-11-08 as research input to the design.
+Sources were checked on 2026-11-07. Approval does not mean runtime validation: no
+sleep-prevention experiment has been run. Source-based findings, inferences,
+uncertainties, and required verification remain distinguished below.
 
 ## Sleep prevention
 
@@ -36,8 +38,8 @@ The original process cannot survive a restart. Restoring a session would require
 separate behavior. Terminal closure depends on process ownership and signals;
 using `caffeinate` alone does not specify a reliable product lifecycle.
 The owner chose elapsed time including actual sleep and no active-session
-recovery after crash/restart. The clock mechanism and runtime verification are
-still outstanding.
+recovery after crash/restart. The approved plan selects ContinuousClock; runtime
+verification is still outstanding.
 
 ### Timing and process lifetime
 
@@ -86,9 +88,9 @@ its [window style](https://developer.apple.com/documentation/swiftui/menubarextr
 available from macOS 13.0. The window style supports a popover-like interface with
 custom layout and controls. It matches duration fields, mode toggle, status,
 and start/stop/replacement actions. Native Swift/SwiftUI was selected in round 7;
-the exact SwiftUI/AppKit integration remains a proposed implementation detail.
+the SwiftUI/AppKit integration is specified in the plan approved on 2026-11-08.
 
-For the proposed reopen behavior, prefer public AppKit
+For the approved reopen behavior, use public AppKit
 [NSStatusItem](https://developer.apple.com/documentation/appkit/nsstatusitem) and
 [NSPopover](https://developer.apple.com/documentation/appkit/nspopover/show%28relativeto%3Aof%3Apreferrededge%3A%29)
 with a SwiftUI [NSHostingController](https://developer.apple.com/documentation/swiftui/nshostingcontroller).
