@@ -181,3 +181,45 @@ open questions. Local development can proceed without buying membership now.
 In round 3, the owner chose a local-only first milestone and deferred public
 distribution and membership cost decisions. No public distribution channel,
 purchase, signing identity, or App Store release has been selected or authorized.
+
+## Addendum: requested closed-lid operation on battery
+
+Investigated on 2026-11-08 after baseline approval. This addendum records a new
+requirement and findings; it is not an approved implementation or tested claim
+of support on the target Mac.
+
+- The owner wants background agents to continue with the MacBook lid closed
+  while running on battery. The existing idle-sleep assertions are insufficient
+  for this requirement. Apple's archived
+  [power-management release notes](https://developer.apple.com/library/archive/releasenotes/Darwin/RN-IOKitPowerManagment/index.html)
+  explicitly distinguish assertions from forced lid-close sleep. This agrees
+  with the limitation already recorded in the approved baseline.
+- The maintainer's [Amphetamine Power Protect documentation](https://github.com/x74353/Amphetamine-Power-Protect)
+  describes an additional installer, administrator password/Touch ID approval,
+  an application script, and a sudoers configuration. It documents Apple Silicon
+  closed-display issues on external-power transitions. This is primary evidence
+  that comparable behavior requires extra mechanisms in that application, not
+  evidence that Not Yet's unmodified baseline can provide it.
+- The maintainer's
+  [closed-display fail-safe source](https://github.com/x74353/Amphetamine-Enhancer/blob/master/Xcode%20Project/Amphetamine%20Enhancer/Scripts/amphetamine-enhancer-cdmManager.sh)
+  checks application/session presence and triggers restoration when protection
+  should no longer be active. A system-wide override therefore needs recovery
+  beyond the normal cleanup of process-owned IOPM assertions.
+- The locally installed pmset manual states that changing its settings requires
+  root and describes its system-wide settings storage. It does not document the
+  specific disablesleep control in the inspected settings list; do not assume
+  its exact persistence, sleep, crash, or reboot semantics without verification.
+
+Inference: a privileged override/helper or another separately verified mechanism
+is a candidate for investigation. It changes installation and failure recovery
+relative to the baseline. No supported public idle assertion has been found that
+alone fulfills the new requirement. Feasibility and compatibility remain open;
+we have not changed pmset, installed scripts, modified sudoers, closed the lid,
+or run a prototype.
+
+A target-model query through sysctl was blocked by the sandbox; the exact model
+has not been established in this investigation. The OS reports macOS 26.6.2.
+The product decision still needed is whether administrator-approved setup is
+acceptable. Later tests must cover the actual target Mac, finite duration,
+battery/power transitions, restoration, and continued computation with the lid
+closed rather than trusting only the app's displayed active state.

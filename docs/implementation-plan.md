@@ -193,3 +193,26 @@ Approved on 2026-11-08 by the owner's explicit instruction to mark all resources
 produced during grilling as approved, then commit and push. This includes the
 routine details and verification criteria in this plan. Approval is complete;
 implementation and all runtime checks remain to be carried out.
+
+## Scope-change hold: closed-lid operation on battery
+
+After approving the baseline, the owner requested continued background work
+with the MacBook lid closed and no power adapter. The baseline's ordinary IOPM
+assertions and no-helper architecture do not establish this capability.
+
+Before publishing the consolidated specification or implementing this extension:
+
+1. Confirm whether a one-time administrator-approved setup and a narrowly scoped
+   privileged component are acceptable as a product requirement. This preference
+   is distinct from permission to install or change anything on the owner's Mac.
+2. Investigate a bounded mechanism and verify it on the actual target hardware
+   and macOS, including battery operation without an external display if required.
+3. Define reliable restoration independent of UI survival, native-state readback,
+   battery/power-source behavior, timeout, stop, quit, crash, and uninstall paths.
+4. Revise the architecture, test seams, scope, and acceptance criteria accordingly.
+   Do not claim support from documentation or other applications alone.
+
+Existing deterministic session tests remain useful. This extension also needs
+independent real-system observations of lid closure and continued computation;
+ordinary idle assertions or a running countdown alone are insufficient evidence.
+No implementation or power-management mutation has been performed.

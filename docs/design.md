@@ -235,3 +235,34 @@ Approval is recorded for future implementation; this change records approval and
 publishes documentation only. No application code, build, or runtime verification
 has been performed. Deferred distribution decisions and research caveats remain
 in effect.
+
+## Subsequent scope change: closed-lid operation on battery
+
+Requested by the owner after baseline approval and before publishing the
+consolidated specification on 2026-11-08.
+
+The owner needs Not Yet to prevent a MacBook from sleeping when its lid is
+closed while disconnected from the power adapter, so background work such as
+agent runs can continue. This is an additional requirement beyond the approved
+idle-sleep modes; do not interpret the prior closed-lid exclusion as dismissal
+of this newly requested capability.
+
+The baseline remains approved for its existing behavior, but it does not satisfy
+this extension. Ordinary caffeinate/IOPM idle assertions do not provide the
+required closed-lid guarantee. The extension's mechanism, elevated-permission
+setup, recovery behavior, compatibility, and acceptance tests are not yet
+approved or experimentally verified. Whether operation must also work without
+an external display is treated as the intended scenario pending confirmation.
+
+Resolve this architectural change before publishing a complete implementation
+specification. In particular, revisit the baseline exclusion of privileged
+helpers and the assumption that all protection disappears with the UI process.
+Do not silently turn an application-owned assertion into a system-wide override.
+A time-bounded override needs reliable restoration on expiry, stop, quit, crash,
+and failed startup/replacement, plus a defined battery policy. Restoring settings
+must respect their pre-session state and other software rather than assuming
+that sleep was originally enabled.
+
+No system settings have been changed and no closed-lid experiment or helper
+installation has been authorized or performed. See the research addendum for
+primary-source evidence and the remaining decision.
