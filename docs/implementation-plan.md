@@ -1,18 +1,24 @@
 # StillWorking — solution and implementation plan
 
-Status: approved by the owner on 2026-11-08, including the shared understanding,
-interaction details, architecture, implementation sequence, and acceptance
-criteria. No application code or build configuration has been created.
+Status: original baseline approved on 2026-11-08. The main first-version
+requirement is now closed-lid operation on battery during every active timer.
+The owner accepted one-time administrator setup, a fixed 20% unplugged battery
+floor, and operation without an external monitor. Revising the protection
+architecture and acceptance plan is required before implementation. No application code or build configuration has been created.
 
 Confirmed decisions and interview references are in the [design brief](design.md).
 Platform evidence is in [research notes](research.md).
 
 ## Intended result
 
-A small English-language menu bar application, `StillWorking.app`, built locally on
-the owner's Mac. It offers finite sessions, a display-mode choice, a countdown,
+A small English-language menu bar application, `StillWorking.app`, built locally
+on the owner's Mac. Its primary outcome is continued background work with the
+MacBook lid closed, no power adapter, and no external monitor during every
+active timer, until expiry, early stop/quit, or the fixed 20% battery floor. It offers
+finite sessions, an open-lid display-mode choice, a countdown,
 replacement, and early stop. It uses Swift/SwiftUI and public macOS power APIs,
-under the MIT license. AppKit may supplement SwiftUI.
+under the MIT license. AppKit may supplement SwiftUI. The direct idle APIs alone
+do not meet the new primary requirement; the closed-lid mechanism is unresolved.
 
 Complete the first milestone by delivering the local app and documented
 build/launch steps with the acceptance checks below. Public distribution, a CLI,
@@ -68,14 +74,20 @@ polish may be refined without changing behavior.
 
 - Prevent automatic idle system sleep and optionally automatic display sleep.
   Use public APIs, without synthetic input or private APIs.
-- Do not promise to prevent manual sleep, lid-close sleep, low-battery/thermal
-  sleep, or every forced sleep. Do not wake the Mac at the deadline.
+- The baseline's exclusion of lid-close sleep is superseded by the primary
+  requirement. Verify the new mechanism on the target Mac before claiming
+  support. Preserve emergency/thermal protections. The fixed 20% battery cutoff
+  while unplugged is confirmed. The owner accepts that manual Apple-menu Sleep
+  may be blocked until the timer is stopped; document this in the README/FAQ and
+  verify actual behavior and restoration. Do not wake the Mac at expiry.
 - Do not change persistent power, screen-saver, or security settings. Briefly
   explain the display option's material limitation, for example:
   `Keeping the display on may delay automatic locking.` Provide concise help for
   the other sleep limitations. Do not promise unchanged locking in every setup.
 - Closing a terminal does not affect this independently launched application.
-  No shell setup, administrator helper, or background daemon is included.
+  The owner accepts one-time administrator setup and a narrowly scoped privileged
+  component; its implementation and independent restoration are under design.
+  Normal operation must remain accessible without shell configuration.
 
 ## Approved technical solution
 
@@ -194,25 +206,41 @@ produced during grilling as approved, then commit and push. This includes the
 routine details and verification criteria in this plan. Approval is complete;
 implementation and all runtime checks remain to be carried out.
 
-## Scope-change hold: closed-lid operation on battery
+## Main requirement under specification: closed-lid operation on battery
 
-After approving the baseline, the owner requested continued background work
-with the MacBook lid closed and no power adapter. The baseline's ordinary IOPM
+After approving the baseline, the owner requested and then explicitly confirmed
+continued background work with the MacBook lid closed and no power adapter as
+the main feature. Every timer start must provide it under supported conditions;
+it is not a later optional enhancement. The baseline's ordinary IOPM
 assertions and no-helper architecture do not establish this capability.
 
-Before publishing the consolidated specification or implementing this extension:
+The [consolidated functional specification](https://github.com/vitherain/still-working/issues/1)
+is published. Its first implementation gate must resolve the following before
+later work relies on the closed-lid mechanism:
 
-1. Confirm whether a one-time administrator-approved setup and a narrowly scoped
-   privileged component are acceptable as a product requirement. This preference
-   is distinct from permission to install or change anything on the owner's Mac.
+1. One-time administrator-approved setup and a narrowly scoped privileged
+   component are accepted (Q21: A). This preference is distinct from permission
+   to install or change anything on the owner's Mac.
 2. Investigate a bounded mechanism and verify it on the actual target hardware
-   and macOS, including battery operation without an external display if required.
+   and macOS. Battery operation without an external display is required (Q23: A).
 3. Define reliable restoration independent of UI survival, native-state readback,
-   battery/power-source behavior, timeout, stop, quit, crash, and uninstall paths.
+   timeout, stop, quit, crash, and uninstall paths. The fixed unplugged battery
+   cutoff is 20% (Q22: A): stop at/below it, refuse start at/below it, continue
+   while externally powered, stop on unplugging at/below it, and require a manual
+   new start after a cutoff. Original quit/crash and no-session-recovery behavior
+   remains in effect; implement restoration independently of the UI process.
 4. Revise the architecture, test seams, scope, and acceptance criteria accordingly.
    Do not claim support from documentation or other applications alone.
 
-Existing deterministic session tests remain useful. This extension also needs
+The planned deterministic session tests remain applicable. This extension also needs
 independent real-system observations of lid closure and continued computation;
 ordinary idle assertions or a running countdown alone are insufficient evidence.
 No implementation or power-management mutation has been performed.
+
+The latest source investigation found that the candidate global override may
+block demand/manual Sleep and persists independently of the app. The owner
+accepted stopping the timer before manual Sleep and requires a README/FAQ
+explanation (Q24: A). Assess emergency-sleep effects and require a bounded
+recovery design before selecting or enabling it. A service-registration API does
+not by itself provide rollback or prove ad-hoc local signing support. See the
+research follow-up for evidence and the local LaunchDaemon alternative.

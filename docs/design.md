@@ -1,14 +1,24 @@
 # StillWorking — design brief
 
-Status: approved by the owner on 2026-11-08, including the solution, routine
-behavior, scope, acceptance criteria, and implementation plan. Application
-implementation has not started.
+Status: original idle-sleep baseline approved on 2026-11-08. The owner has since
+confirmed closed-lid operation on battery as the main feature of the first
+version. One-time administrator-approved setup, a 20% battery floor, and
+operation without an external display are confirmed. The exact mechanism,
+independent restoration, and revised verification plan remain under design. Application implementation has not started.
 Discussion is in Czech; repository content is in English.
 
 ## Goal and primary audience
 
-Make temporary prevention of automatic macOS sleep understandable and accessible
-without requiring a particular shell or manual shell configuration.
+Keep a MacBook executing background work during a finite keep-awake session,
+including after closing its lid while disconnected from the power adapter.
+This is the main feature of StillWorking and is required for the first local
+version; an idle-only application does not meet the goal. Every timer start must
+provide this behavior under the supported conditions, rather than requiring a
+separate closed-lid toggle.
+
+Make this behavior understandable and accessible without requiring a particular
+shell or manual shell configuration. A coding-agent run is a concrete primary
+scenario. Operation without an external display is explicitly required.
 
 The primary first-release audience is ordinary macOS users who do not use a
 terminal (owner confirmation, round 1, Q2: A).
@@ -21,17 +31,23 @@ See [research notes](research.md) for the overlap.
 
 Background work with the display allowed to sleep and use that keeps the display
 on have equal first-release priority (round 2, Q4: C). A specific personal example
-has not been supplied; neither scenario takes precedence by assumption.
+was initially unspecified; the later confirmed primary scenario is continued
+background agent work with the lid closed on battery. Both display choices remain
+available for open-lid operation.
 
 Domain terms are defined in the [glossary](../GLOSSARY.md). These terms describe
 behavior and do not prescribe the final UI wording.
 
 ## Requirements from the initial brief
 
-These explicit owner needs and the detailed local-milestone behavior below are
-approved together with the implementation plan.
+The original requirements were approved with the baseline implementation plan.
+The owner subsequently confirmed closed-lid operation on battery as the primary
+requirement; the corresponding architecture revision remains pending.
 
-- Prevent automatic computer sleep for a duration expressed in minutes or hours.
+- Prevent computer sleep for a duration expressed in minutes or hours, including
+  lid-close sleep on battery as the primary first-version requirement. The
+  implementation must validate actual support instead of promising it from
+  ordinary idle assertions alone.
 - Let the user choose whether the display may turn off automatically or should
   remain on.
 - Show the active mode and remaining time.
@@ -70,6 +86,11 @@ approved together with the implementation plan.
 | D22 | Use the MIT license, permitting reuse including closed-source derivatives subject to its terms. | Round 7, Q19: A. |
 | D23 | Approve all resources produced during grilling, including the routine details and completion criteria, and record the approval with a commit and push. | Explicit owner instruction, 2026-11-08. |
 | D24 | Rename the product to StillWorking, the GitHub repository to `vitherain/still-working`, and the local directory to `/Users/vitherain/personal_dev/still-working`. Preserve repository identity/history and the pending closed-lid scope extension. | Explicit owner instruction, 2026-11-08. |
+| D25 | Make continued work with the lid closed and no power adapter the main first-version feature, applying whenever the timer starts under supported conditions. The mechanism and safeguards still need specification and verification. | Explicit owner clarification, 2026-11-08. |
+| D26 | Accept one-time administrator-approved setup and a narrowly scoped privileged component. This is an architecture preference, not authorization to install or mutate the target Mac. | Q21: A, 2026-11-08. |
+| D27 | End a battery-powered session when charge reaches 20%, releasing this tool's protection and allowing normal sleep behavior. Use a fixed threshold in the first version. | Q22: A, 2026-11-08. |
+| D28 | Require closed-lid operation on battery without an external monitor or other attached equipment. | Q23: A, 2026-11-08. |
+| D29 | Accept that manual Apple-menu Sleep may be blocked during a session; the user stops the timer first. Explain this in the project README/FAQ. This does not select or validate the native mechanism. | Q24: A, 2026-11-08. |
 
 At project setup, the directory was empty and outside any Git repository. It was
 initialized on `main`; the initial documentation and agent configuration have
@@ -78,7 +99,9 @@ since been committed and the GitHub origin configured.
 ## First milestone scope
 
 Deliver a locally usable menu bar application on the owner's Mac, with finite
-sessions, both display modes, active status, remaining time, and early stop.
+sessions that keep background work running with the lid closed on battery, both
+open-lid display modes, active status, remaining time, and early stop. Closed-lid
+operation is an acceptance gate for this milestone, not a deferred enhancement.
 Display-on mode is the initial selection. Confirmed behavior is recorded here;
 routine details and the work sequence are specified in the approved
 [solution and implementation plan](implementation-plan.md).
@@ -121,6 +144,11 @@ duration/mode for a new manual start. It does not recover the interrupted sessio
 No detached timer continuing after an intentional quit is part of this milestone.
 Repeated-open and terminal-independence rules are approved below.
 
+A battery floor of 20% ends an unplugged session early and releases its
+protection; work may stop before the chosen duration expires. The floor is
+fixed in the first version. Low-battery, emergency, and thermal protections must
+remain effective. This exception is part of the primary keep-awake contract.
+
 On natural completion, remove the countdown, switch to the inactive icon, and
 show completion status when the menu/panel is opened. The app stays available
 for the next manual start. Do not request notification permission for completion;
@@ -162,36 +190,61 @@ plan on 2026-11-08.
 - Use English for the initial user interface, consistent with the owner's
   instruction that repository outputs are in English. Localization can be
   considered for a later milestone.
-- Do not add automatic launch at login, scheduled or indefinite sessions, or
-  changes to persistent power/security settings in this milestone.
+- Automatic user-session launch at login and scheduled/indefinite sessions remain
+  outside this milestone. Preserve security settings. Any privileged setup or
+  temporary system-wide sleep override needed for closed-lid operation must be
+  explicitly designed, restored reliably, and approved separately.
 
 ## Remaining questions and deferred decisions
 
-The product decisions, routine details, solution, acceptance criteria, and
-implementation plan for the local milestone are approved. No further design
-approval is pending before implementation.
+The original idle-only baseline was approved. The new primary closed-lid battery
+requirement, administrator-approved setup, fixed 20% battery floor, and absence
+of an external display are confirmed. Independent restoration, exact native
+mechanism, and revised verification are still being specified.
+The [consolidated functional specification](https://github.com/vitherain/still-working/issues/1)
+records these requirements, including the resolved manual-sleep limitation and
+the initial technical feasibility gate.
+
+New source-based finding: the candidate global sleep override can also block
+manual Apple-menu Sleep, and its setting can persist independently of the UI.
+The owner accepted stopping the timer before manually choosing Sleep (Q24: A).
+This limitation must remain visible in the project README/FAQ.
+Its effects on emergency sleep paths and recovery must be assessed before
+selecting a mechanism; do not promise unchanged system protections.
 
 Implementation must verify native timeout behavior across sleep/wake, process
 exit cleanup, and display/screen-saver/locking behavior on the target Mac. These
 are technical verification tasks, not unanswered user-preference questions.
-Do not promise prevention of forced sleep or lid-close sleep, or unchanged
-automatic locking in every configuration.
+The earlier exclusion of lid-close sleep is superseded as a product requirement
+by D25. Ordinary idle assertions still cannot establish that capability. Do not
+promise verified closed-lid support, overrides of emergency/thermal shutdown, or
+unchanged automatic locking before the relevant mechanism and conditions are
+validated.
 
 The source repository and origin already exist. Application distribution remains
 explicitly deferred: public name availability, broader macOS/hardware support,
 download format, installation on another Mac, Developer ID/notarization, membership cost,
 and release/update process. None blocks the approved local implementation.
 
-## Approved observable completion criteria
+## Acceptance criteria under revision
 
-Approved by the owner on 2026-11-08 together with the implementation plan.
+The original criteria were approved with the baseline on 2026-11-08. The main
+closed-lid criterion below reflects the subsequent owner clarification. The
+20% unplugged battery exception and no-external-display condition are confirmed;
+recovery details and the final verification procedure remain under design.
 
 1. On the owner's Mac, a non-terminal user can start a finite duration from the
    menu bar application without editing shell files or running terminal commands
    during normal use.
-2. During an active duration, the Mac does not enter automatic idle system sleep
-   under supported, documented conditions.
-3. The display option controls whether automatic display sleep is prevented.
+2. During an active duration, background computation continues after the MacBook
+   lid is closed while disconnected from its power adapter on the supported
+   target machine. Verify continued computation and system sleep state, not just
+   a running countdown or an idle assertion. No external monitor or power
+   adapter may be attached. Test the 20% unplugged battery cutoff and preserve
+   emergency/thermal protections.
+   This is the main acceptance criterion; idle-only protection is insufficient.
+3. With the lid open, the display option controls whether automatic display
+   sleep is prevented. It does not disable the shared closed-lid requirement.
    On initial use, display-on mode is selected; the user can choose either mode.
 4. The active mode and remaining time can be inspected, and the timer can be
    stopped early. During a session, an active icon and remaining time appear in
@@ -223,6 +276,17 @@ Approved by the owner on 2026-11-08 together with the implementation plan.
 14. Natural completion removes the menu bar countdown and changes to the inactive
     icon; the menu/panel reports completion. No completion sound or notification
     permission request occurs, and the app stays open for another manual start.
+15. Reaching the fixed 20% battery floor while unplugged ends the session and
+    releases its protection. Starting at or below the floor must not establish
+    a session; report why it is unavailable. While external power is connected,
+    the unplugged battery floor does not end a session. Disconnecting power at
+    or below the floor ends it; reconnecting power does not restart it.
+16. Document and verify the accepted one-time administrator setup and uninstall
+    path. Verify that the app cannot show full closed-lid protection as active
+    until the required mechanism is available and its state has been checked.
+17. The README/FAQ explains that Apple-menu Sleep may be blocked during an active
+    timer and instructs the user to select Stop first. Verify the stated behavior
+    and restoration on the target Mac; this limitation is explicitly accepted.
 
 ## Approval record
 
@@ -238,24 +302,26 @@ in effect.
 
 ## Subsequent scope change: closed-lid operation on battery
 
-Requested by the owner after baseline approval and before publishing the
-consolidated specification on 2026-11-08.
+Requested by the owner after baseline approval and confirmed on 2026-11-08 as
+the primary first-version requirement before publishing the consolidated
+specification. This requirement supersedes the baseline's lid-close exclusion.
 
 The owner needs StillWorking to prevent a MacBook from sleeping when its lid is
 closed while disconnected from the power adapter, so background work such as
-agent runs can continue. This is an additional requirement beyond the approved
-idle-sleep modes; do not interpret the prior closed-lid exclusion as dismissal
-of this newly requested capability.
+agent runs can continue. This requirement applies to every active timer and is
+the main purpose of the tool. It is required for the first version, while the
+exact privileged mechanism and safeguards remain unresolved.
 
 The baseline remains approved for its existing behavior, but it does not satisfy
 this extension. Ordinary caffeinate/IOPM idle assertions do not provide the
-required closed-lid guarantee. The extension's mechanism, elevated-permission
-setup, recovery behavior, compatibility, and acceptance tests are not yet
-approved or experimentally verified. Whether operation must also work without
-an external display is treated as the intended scenario pending confirmation.
+required closed-lid guarantee. The exact mechanism, recovery behavior, compatibility, and acceptance tests
+are not yet experimentally verified. The owner accepted one-time administrator
+setup, a fixed 20% unplugged battery floor, and operation without an external
+display in Q21–Q23. Installation or system changes still require a concrete
+reviewable procedure before execution.
 
-Resolve this architectural change before publishing a complete implementation
-specification. In particular, revisit the baseline exclusion of privileged
+The consolidated functional specification records a technical feasibility gate
+for this architectural change. In particular, revisit the baseline exclusion of privileged
 helpers and the assumption that all protection disappears with the UI process.
 Do not silently turn an application-owned assertion into a system-wide override.
 A time-bounded override needs reliable restoration on expiry, stop, quit, crash,
@@ -265,4 +331,4 @@ that sleep was originally enabled.
 
 No system settings have been changed and no closed-lid experiment or helper
 installation has been authorized or performed. See the research addendum for
-primary-source evidence and the remaining decision.
+primary-source evidence and unresolved technical questions. Q21–Q24 are resolved.

@@ -219,7 +219,74 @@ or run a prototype.
 
 A target-model query through sysctl was blocked by the sandbox; the exact model
 has not been established in this investigation. The OS reports macOS 26.6.2.
-The product decision still needed is whether administrator-approved setup is
-acceptable. Later tests must cover the actual target Mac, finite duration,
+The owner subsequently accepted one-time administrator-approved setup, a fixed
+20% unplugged battery floor, and operation without an external display (Q21–Q23).
+The mechanism and independent restoration still require design and validation. Later tests must cover the actual target Mac, finite duration,
 battery/power transitions, restoration, and continued computation with the lid
 closed rather than trusting only the app's displayed active state.
+
+
+## Follow-up: system-wide sleep override and privileged lifecycle
+
+Read-only investigation on 2026-11-08. The target model identifier was read as
+`MacBookPro17,1`, running macOS 26.6.2. No override was enabled and no helper was
+installed. Source analysis is not a successful hardware test.
+
+### Candidate mechanism and its limits
+
+Apple's [pmset source](https://github.com/apple-oss-distributions/PowerManagement/blob/main/pmset/pmset.m)
+parses disablesleep into the global SleepDisabled setting rather than separate
+battery/AC profile values. This differs from a process-owned assertion.
+The [preference setter](https://github.com/apple-oss-distributions/IOKitUser/blob/main/pwr_mgt.subproj/IOPMEnergyPrefs.c)
+requires root and synchronizes the value to preferences on disk. The
+[power-management initialization](https://github.com/apple-oss-distributions/PowerManagement/blob/main/pmconfigd/PMSettings.m)
+loads and reapplies system power settings. Do not assume reboot alone restores
+normal sleep; design recovery of a stale override on helper/system startup.
+
+The [XNU sleep gate](https://github.com/apple-oss-distributions/xnu/blob/main/iokit/Kernel/IOPMrootDomain.cpp)
+checks userDisabledAllSleep on both idle and demand-sleep paths. Inference:
+this candidate may block manual Apple-menu Sleep as well as lid-close sleep.
+The general gate also affects some emergency sleep paths. Do not claim that all
+existing sleep protections remain unchanged; assess this before choosing the
+mechanism. Hardware shutdown/throttling behavior has not been established.
+
+The owner accepted that the user may need to stop the timer before manually
+choosing Sleep and required this limitation in the README/FAQ (Q24: A). This
+acceptance does not validate the mechanism or authorize a system mutation.
+
+### Actual state and independent restoration
+
+Preference output from pmset alone is not proof of actual kernel enforcement.
+SleepDisabled is exposed on IOPMrootDomain and can be read through general IOKit
+registry APIs. Its property name is an undocumented contract that needs target
+validation. Observed read-only values were SleepDisabled=No and an open lid;
+these do not establish closed-lid capability.
+
+The selected open-lid display policy must be checked separately with the lid
+closed. No universal claim about internal-panel illumination under the combined
+override/display-assertion configuration has been verified.
+
+The proposed privileged component owns the bounded deadline, battery checks,
+and restoration independently of UI survival. It needs a root-owned recovery
+record before mutation, state readback, recovery after crash/boot, and restoration
+before unregister/uninstall. It should accept only narrowly specified session
+operations, never arbitrary privileged commands. No implementation is selected
+or tested yet; helper restart scheduling is not an unconditional recovery-time
+guarantee.
+
+### Installation and signing constraints
+
+[SMAppService](https://developer.apple.com/documentation/servicemanagement/smappservice)
+provides the modern daemon registration route from macOS 13. The local SDK
+requires code signing and describes notarization for bundles containing daemons.
+Apple DTS describes matching Apple-issued signing identities and cautions about
+ad-hoc reliability: [signing guidance](https://developer.apple.com/forums/thread/799910),
+[development walkthrough](https://developer.apple.com/forums/thread/802443).
+Do not promise an ad-hoc-only SMAppService workflow without verification.
+
+An administrator-installed, root-owned helper and LaunchDaemon is an alternative
+local-development route using standard
+[launchd configuration](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html).
+Its precise installation, caller authorization, recovery, and removal need a
+concrete reviewed design. The owner's acceptance of one-time setup does not
+select both routes or authorize their installation now.
