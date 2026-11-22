@@ -152,7 +152,7 @@ final class SessionController {
                 self.active = ActiveSession(
                     deadline: active.deadline, displayMode: active.displayMode, assertions: assertions
                 )
-                updateRemainingTime(error: release(active.assertions))
+                updateRemainingTime(error: release(unreleasedAssertions.union(active.assertions)))
             } catch {
                 finish(.inactive, error: "Protection could not be restored. \(error.localizedDescription)")
             }

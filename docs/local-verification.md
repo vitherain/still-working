@@ -7,7 +7,7 @@ Runtime evidence here applies to the tested Mac and OS.
 ## Build and install
 
 Use the [README commands](../README.md#build-and-launch-locally). The full
-arm64 XCTest suite passed all 19 tests. The Release build succeeded and
+arm64 XCTest suite passed all 20 tests. The Release build succeeded and
 `codesign --verify --strict StillWorking.app` verified its ad-hoc signature.
 An app bundle copied under the user's Applications directory launched through
 Launch Services as the logged-in regular user. After Quit and a separate forced
@@ -38,9 +38,9 @@ The XCTest suite advances the elapsed clock independently of wall time. It
 covers the exact deadline and rounding, wake with protection missing or power
 unavailable, invalid and overflowing durations, battery charge above, at, and
 below 20%, external power and unplugging, reconnection without auto-resume,
-and assertion acquisition and cleanup failures. The replacement test starts
-with 20 minutes remaining and verifies a new 30-minute timer with the selected
-mode and no protection gap.
+and assertion acquisition and cleanup failures, including failed cleanup across
+repeated wake events. The replacement test starts with 20 minutes remaining and
+verifies a new 30-minute timer with the selected mode and no protection gap.
 
 ## Target Mac observations still outstanding
 

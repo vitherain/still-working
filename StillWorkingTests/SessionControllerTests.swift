@@ -344,6 +344,36 @@ final class SessionControllerTests: XCTestCase {
         XCTAssertTrue(power.owned.isEmpty)
     }
 
+    func testRepeatedWakeRestorationKeepsCleanupWarningUntilOldProtectionIsReleased() throws {
+        let power = FakePower()
+        let session = SessionController(power: power, preferences: testPreferences())
+        session.start()
+        let originalSystem = try XCTUnwrap(power.owned.first { $0.value == .idleSystem }?.key)
+        power.owned = [originalSystem: .idleSystem]
+        power.refuseRelease = .idleSystem
+
+        session.refresh(afterWake: true)
+        XCTAssertEqual(session.state.status, .active)
+        XCTAssertTrue(session.state.error?.contains("released") == true)
+
+        let restoredSystem = try XCTUnwrap(power.owned.first {
+            $0.key != originalSystem && $0.value == .idleSystem
+        }?.key)
+        power.owned.removeValue(forKey: restoredSystem)
+        session.refresh(afterWake: true)
+        XCTAssertEqual(session.state.status, .active)
+        XCTAssertTrue(session.state.error?.contains("released") == true)
+        XCTAssertEqual(power.owned[originalSystem], .idleSystem)
+
+        power.refuseRelease = nil
+        power.owned = power.owned.filter { $0.value == .idleSystem }
+        session.refresh(afterWake: true)
+        XCTAssertEqual(session.state.status, .active)
+        XCTAssertNil(session.state.error)
+        XCTAssertNil(power.owned[originalSystem])
+        XCTAssertEqual(power.owned.count, 2)
+    }
+
     func testFailedWakeRestorationReleasesOldAndPartialProtection() {
         let power = FakePower()
         let session = SessionController(power: power, preferences: testPreferences())

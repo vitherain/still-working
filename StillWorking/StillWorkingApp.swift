@@ -39,7 +39,7 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
                 self?.renderStatusItem(state)
             }
         NSWorkspace.shared.notificationCenter.addObserver(
-            self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil
+            self, selector: #selector(didWake(_:)), name: NSWorkspace.didWakeNotification, object: nil
         )
         // Let AppKit place the new status item before using it as the popover anchor.
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(250)) { [weak self] in
@@ -76,11 +76,11 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController?.view.window?.makeKey()
     }
 
-    @objc private func didWake() {
+    @objc private func didWake(_ notification: Notification) {
         session.refresh(afterWake: true)
     }
 
-    @objc private func refresh() {
+    @objc private func refresh(_ timer: Timer) {
         session.refresh()
     }
 
@@ -98,7 +98,7 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         if let remaining = state.remainingTime {
             let timer = Timer(
                 timeInterval: min(1, remaining.timeInterval), target: self,
-                selector: #selector(refresh), userInfo: nil, repeats: false
+                selector: #selector(refresh(_:)), userInfo: nil, repeats: false
             )
             RunLoop.main.add(timer, forMode: .common)
             refreshTimer = timer
@@ -226,7 +226,7 @@ private struct SessionPanel: View {
                     .keyboardShortcut("q", modifiers: .command)
             }
 
-            Text("Keeping the display on may delay automatic locking. Closing the lid or choosing Sleep still puts the Mac to sleep.")
+            Text("Keeping the display on may delay automatic locking. macOS handles sleep when you close the lid or choose Sleep.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
