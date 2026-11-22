@@ -2,7 +2,8 @@
 
 Status: original idle-sleep baseline approved on 2026-11-08. On 2026-11-22
 the owner removed the closed-lid requirement and restored idle-only scope.
-Application implementation is pending.
+[Local verification](local-verification.md) tracks the implemented app and
+remaining target Mac observations.
 Discussion is in Czech; repository content is in English.
 
 ## Goal and primary audience
