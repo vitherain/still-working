@@ -30,11 +30,13 @@ final class SessionController {
     struct State: Equatable {
         var status: Status = .inactive
         var remainingTime: Duration?
+        var displayMode: DisplayMode?
         var error: String?
     }
 
     private struct ActiveSession {
         let deadline: ContinuousClock.Instant
+        let displayMode: DisplayMode
         let assertions: [UInt32]
     }
 
@@ -50,19 +52,19 @@ final class SessionController {
         self.now = now
     }
 
-    func start() {
-        guard active == nil else { return }
+    func start(_ selection: SessionSelection = .standard) {
+        guard active == nil, SessionSelection.validMinutes.contains(selection.minutes) else { return }
         if let error = release(unreleasedAssertions) {
             setState(.inactive, error: error)
             return
         }
 
-        let duration = Duration.seconds(1_800)
+        let duration = Duration.seconds(selection.minutes * 60)
         let deadline = now().advanced(by: duration)
         do {
             try checkPower()
-            let assertions = try acquireProtection(timeout: duration)
-            active = ActiveSession(deadline: deadline, assertions: assertions)
+            let assertions = try acquireProtection(mode: selection.displayMode, timeout: duration)
+            active = ActiveSession(deadline: deadline, displayMode: selection.displayMode, assertions: assertions)
             updateRemainingTime()
         } catch {
             setState(.inactive, error: error.localizedDescription)
@@ -94,8 +96,10 @@ final class SessionController {
 
         if afterWake && !active.assertions.allSatisfy(power.isActive) {
             do {
-                let assertions = try acquireProtection(timeout: remaining)
-                self.active = ActiveSession(deadline: active.deadline, assertions: assertions)
+                let assertions = try acquireProtection(mode: active.displayMode, timeout: remaining)
+                self.active = ActiveSession(
+                    deadline: active.deadline, displayMode: active.displayMode, assertions: assertions
+                )
                 updateRemainingTime(error: release(active.assertions))
             } catch {
                 finish(.inactive, error: "Protection could not be restored. \(error.localizedDescription)")
@@ -117,11 +121,13 @@ final class SessionController {
         }
     }
 
-    private func acquireProtection(timeout: Duration) throws -> [UInt32] {
+    private func acquireProtection(mode: DisplayMode, timeout: Duration) throws -> [UInt32] {
         var assertions: [UInt32] = []
         do {
             assertions.append(try power.acquire(.idleSystem, timeout: timeout))
-            assertions.append(try power.acquire(.idleDisplay, timeout: timeout))
+            if mode == .displayOn {
+                assertions.append(try power.acquire(.idleDisplay, timeout: timeout))
+            }
             try checkPower()
             return assertions
         } catch {
@@ -171,10 +177,28 @@ final class SessionController {
     }
 
     private func setState(_ status: Status, remainingTime: Duration? = nil, error: String? = nil) {
-        let updated = State(status: status, remainingTime: remainingTime, error: error)
+        let updated = State(
+            status: status, remainingTime: remainingTime, displayMode: active?.displayMode, error: error
+        )
         if state != updated {
             state = updated
         }
+    }
+}
+
+extension SessionController.State {
+    var roundedSeconds: Int64? {
+        guard let remainingTime else { return nil }
+        let components = remainingTime.components
+        return components.seconds + (components.attoseconds > 0 ? 1 : 0)
+    }
+
+    var countdown: String? {
+        guard let seconds = roundedSeconds else { return nil }
+        if seconds >= 3_600 {
+            return String(format: "%lld:%02lld:%02lld", seconds / 3_600, seconds / 60 % 60, seconds % 60)
+        }
+        return String(format: "%lld:%02lld", seconds / 60, seconds % 60)
     }
 }
 

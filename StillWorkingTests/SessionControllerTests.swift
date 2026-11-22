@@ -1,6 +1,113 @@
 import XCTest
 
 final class SessionControllerTests: XCTestCase {
+    func testComputerOnlySessionUsesSelectedDurationAndRestoresOnlySystemProtectionAfterWake() {
+        let power = FakePower()
+        let origin = ContinuousClock.now
+        var currentTime = origin
+        let session = SessionController(power: power, now: { currentTime })
+
+        session.start(SessionSelection(minutes: 15, displayMode: .computerOnly))
+
+        XCTAssertEqual(session.state.remainingTime, .seconds(900))
+        XCTAssertEqual(session.state.displayMode, .computerOnly)
+        XCTAssertEqual(Array(power.owned.values), [.idleSystem])
+
+        power.owned.removeAll()
+        currentTime = origin.advanced(by: .seconds(120))
+        session.refresh(afterWake: true)
+
+        XCTAssertEqual(session.state.remainingTime, .seconds(780))
+        XCTAssertEqual(session.state.displayMode, .computerOnly)
+        XCTAssertEqual(Array(power.owned.values), [.idleSystem])
+        XCTAssertEqual(power.timeouts.last, .seconds(780))
+
+        session.stop()
+        XCTAssertNil(session.state.displayMode)
+        XCTAssertTrue(power.owned.isEmpty)
+    }
+
+    func testCustomDurationStartsAtMinimumIntermediateAndMaximum() throws {
+        let origin = ContinuousClock.now
+        let session = SessionController(power: FakePower(), now: { origin })
+        var draft = SessionDraft()
+        draft.preset = .custom
+
+        for (hours, minutes, seconds) in [("0", "1", 60), ("3", "47", 13_620), ("168", "0", 604_800)] {
+            draft.hours = hours
+            draft.minutes = minutes
+
+            session.start(try draft.selection.get())
+
+            XCTAssertEqual(session.state.remainingTime, .seconds(seconds))
+            session.stop()
+        }
+    }
+
+    func testInvalidCustomInputExplainsWhatPreventsStart() {
+        let inputs: [(String, String, SessionDraft.InvalidDuration)] = [
+            ("", "1", .hours), ("1", "", .minutes), ("-1", "30", .hours),
+            ("-0", "1", .hours), ("1.5", "0", .hours), ("1", "2.5", .minutes),
+            ("1", "minutes", .minutes), ("9999999999999999999999999", "0", .hours),
+            ("169", "0", .hours), ("1", "60", .minutes), ("0", "0", .total), ("168", "1", .total)
+        ]
+        var draft = SessionDraft()
+        draft.preset = .custom
+
+        for (hours, minutes, expected) in inputs {
+            draft.hours = hours
+            draft.minutes = minutes
+
+            XCTAssertEqual(draft.selection, .failure(expected), "\(hours)h \(minutes)m")
+        }
+    }
+
+    func testFirstUseAndPresetSelectionsStartExpectedTimers() throws {
+        let presets: [(SessionDraft.Preset, Duration)] = [
+            (.quarterHour, .seconds(900)), (.halfHour, .seconds(1_800)), (.oneHour, .seconds(3_600)),
+            (.twoHours, .seconds(7_200)), (.fourHours, .seconds(14_400))
+        ]
+        let origin = ContinuousClock.now
+        let session = SessionController(power: FakePower(), now: { origin })
+        var draft = SessionDraft()
+
+        XCTAssertEqual(draft.preset, .halfHour)
+        XCTAssertTrue(draft.keepDisplayOn)
+
+        for (preset, advertisedDuration) in presets {
+            draft.preset = preset
+            session.start(try draft.selection.get())
+
+            XCTAssertEqual(session.state.remainingTime, advertisedDuration)
+            XCTAssertEqual(session.state.displayMode, .displayOn)
+            session.stop()
+        }
+    }
+
+    func testCountdownRoundsUpToTheLastSecondAndFormatsTotalHours() {
+        let origin = ContinuousClock.now
+        var currentTime = origin
+        let session = SessionController(power: FakePower(), now: { currentTime })
+        session.start(SessionSelection(minutes: 10_080, displayMode: .displayOn))
+        XCTAssertEqual(session.state.countdown, "168:00:00")
+
+        let deadline = origin.advanced(by: .seconds(604_800))
+        let examples: [(Duration, String)] = [
+            (.seconds(3_600), "1:00:00"), (.seconds(3_599), "59:59"),
+            (.seconds(65) + .milliseconds(1), "1:06"), (.milliseconds(1), "0:01")
+        ]
+        for (remaining, expected) in examples {
+            currentTime = deadline.advanced(by: .zero - remaining)
+            session.refresh()
+            XCTAssertEqual(session.state.countdown, expected)
+        }
+
+        currentTime = deadline
+        session.refresh()
+        XCTAssertEqual(session.state.status, .finished)
+        XCTAssertNil(session.state.countdown)
+    }
+
     func testBatteryFloorRefusesStartAndExternalPowerAllowsManualStart() {
         let power = FakePower()
         let session = SessionController(power: power)

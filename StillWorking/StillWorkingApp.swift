@@ -108,7 +108,7 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
     private func panel(for state: SessionController.State) -> SessionPanel {
         SessionPanel(
             state: state,
-            start: { [weak self] in self?.session.start() },
+            start: { [weak self] in self?.session.start($0) },
             stop: { [weak self] in self?.session.stop() },
             quit: { [weak self] in self?.quit() }
         )
@@ -129,22 +129,26 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
 
 private struct SessionPanel: View {
     let state: SessionController.State
-    let start: () -> Void
+    let start: (SessionSelection) -> Void
     let stop: () -> Void
     let quit: () -> Void
 
+    @State private var draft = SessionDraft()
+
     var body: some View {
+        let selection = draft.selection
+        let validSelection = try? selection.get()
         VStack(alignment: .leading, spacing: 12) {
             Text("StillWorking")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
 
-            if let countdown = state.countdown {
+            if let countdown = state.countdown, let mode = state.displayMode {
                 Text(countdown)
                     .font(.system(.largeTitle, design: .monospaced))
                     .accessibilityLabel("Remaining time")
                     .accessibilityValue(state.accessibleSummary)
-                Text("Active · Display on")
+                Text("Active · \(mode.label)")
             } else {
                 Text(state.status.label)
             }
@@ -157,16 +161,40 @@ private struct SessionPanel: View {
 
             Divider()
 
-            Text("30 minutes · Keep display on")
-                .font(.callout)
+            Picker("Duration", selection: $draft.preset) {
+                ForEach(SessionDraft.Preset.allCases, id: \.self) { preset in
+                    Text(preset.label).tag(preset)
+                }
+            }
+            .pickerStyle(.menu)
+
+            if draft.preset == .custom {
+                HStack {
+                    durationField("Hours", text: $draft.hours)
+                    durationField("Minutes", text: $draft.minutes)
+                }
+            }
+
+            if case let .failure(problem) = selection {
+                Text(problem.rawValue)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Toggle("Keep display on", isOn: $draft.keepDisplayOn)
 
             HStack {
                 if state.status == .active {
                     Button("Stop", action: stop)
                         .keyboardShortcut(".", modifiers: .command)
                 } else {
-                    Button("Start", action: start)
-                        .keyboardShortcut(.defaultAction)
+                    Button("Start") {
+                        if let validSelection {
+                            start(validSelection)
+                        }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(validSelection == nil)
                 }
                 Spacer()
                 Button(state.status == .active ? "Stop Timer and Quit" : "Quit", action: quit)
@@ -180,6 +208,26 @@ private struct SessionPanel: View {
         }
         .padding(16)
         .frame(width: 310)
+    }
+
+    private func durationField(_ label: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .accessibilityHidden(true)
+            TextField(label, text: text)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel(label)
+        }
+    }
+}
+
+private extension DisplayMode {
+    var label: String {
+        switch self {
+        case .displayOn: "Display on"
+        case .computerOnly: "Computer only"
+        }
     }
 }
 
@@ -195,20 +243,6 @@ private extension SessionController.Status {
 }
 
 private extension SessionController.State {
-    private var roundedSeconds: Int64? {
-        guard let remainingTime else { return nil }
-        let components = remainingTime.components
-        return components.seconds + (components.attoseconds > 0 ? 1 : 0)
-    }
-
-    var countdown: String? {
-        guard let seconds = roundedSeconds else { return nil }
-        if seconds >= 3_600 {
-            return String(format: "%lld:%02lld:%02lld", seconds / 3_600, seconds / 60 % 60, seconds % 60)
-        }
-        return String(format: "%lld:%02lld", seconds / 60, seconds % 60)
-    }
-
     var accessibleSummary: String {
         if let seconds = roundedSeconds {
             let formatter = DateComponentsFormatter()
