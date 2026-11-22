@@ -1,7 +1,8 @@
 # StillWorking — solution and implementation plan
 
 Status: original baseline approved on 2026-11-08 and restored to idle-only
-protection on 2026-11-22. Application implementation is pending.
+protection on 2026-11-22. [Local verification](local-verification.md) tracks
+the implemented app and remaining target Mac observations.
 
 Confirmed decisions and interview references are in the [design brief](design.md).
 Platform evidence is in [research notes](research.md).
@@ -198,4 +199,4 @@ Approved on 2026-11-08 by the owner's explicit instruction to mark all resources
 produced during grilling as approved, then commit and push. This includes the
 routine details and verification criteria of the original plan. The 2026-11-22
 scope decision is recorded in the design brief. Implementation and runtime
-verification are pending.
+verification results are in the [local verification record](local-verification.md).
