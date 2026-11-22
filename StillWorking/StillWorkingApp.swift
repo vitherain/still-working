@@ -16,7 +16,7 @@ enum StillWorkingApp {
 
 @MainActor
 private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
-    private let session = SessionController(power: MacPower())
+    private let session = SessionController(power: MacPower(), preferences: .standard)
     private let popover = NSPopover()
     private var statusItem: NSStatusItem?
     private var sessionObserver: AnyCancellable?
@@ -108,7 +108,9 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
     private func panel(for state: SessionController.State) -> SessionPanel {
         SessionPanel(
             state: state,
+            initialSelection: session.rememberedSelection,
             start: { [weak self] in self?.session.start($0) },
+            replace: { [weak self] in self?.session.replace($0) },
             stop: { [weak self] in self?.session.stop() },
             quit: { [weak self] in self?.quit() }
         )
@@ -130,10 +132,27 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
 private struct SessionPanel: View {
     let state: SessionController.State
     let start: (SessionSelection) -> Void
+    let replace: (SessionSelection) -> Void
     let stop: () -> Void
     let quit: () -> Void
 
-    @State private var draft = SessionDraft()
+    @State private var draft: SessionDraft
+
+    init(
+        state: SessionController.State,
+        initialSelection: SessionSelection,
+        start: @escaping (SessionSelection) -> Void,
+        replace: @escaping (SessionSelection) -> Void,
+        stop: @escaping () -> Void,
+        quit: @escaping () -> Void
+    ) {
+        self.state = state
+        self.start = start
+        self.replace = replace
+        self.stop = stop
+        self.quit = quit
+        _draft = State(initialValue: SessionDraft(selection: initialSelection))
+    }
 
     var body: some View {
         let selection = draft.selection
@@ -185,6 +204,12 @@ private struct SessionPanel: View {
 
             HStack {
                 if state.status == .active {
+                    Button("Replace Timer") {
+                        if let validSelection {
+                            replace(validSelection)
+                        }
+                    }
+                    .disabled(validSelection == nil)
                     Button("Stop", action: stop)
                         .keyboardShortcut(".", modifiers: .command)
                 } else {
@@ -207,7 +232,7 @@ private struct SessionPanel: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .frame(width: 310)
+        .frame(width: 350)
     }
 
     private func durationField(_ label: String, text: Binding<String>) -> some View {

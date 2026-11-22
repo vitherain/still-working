@@ -1,11 +1,144 @@
 import XCTest
 
 final class SessionControllerTests: XCTestCase {
+    func testFailedAcquisitionPreservesTheOriginalTimerWhileProtectionIsValid() {
+        let preferences = testPreferences()
+        let power = FakePower()
+        let origin = ContinuousClock.now
+        var currentTime = origin
+        let session = SessionController(power: power, preferences: preferences, now: { currentTime })
+        let original = SessionSelection(minutes: 30, displayMode: .computerOnly)
+        session.start(original)
+        let previousAssertions = power.owned
+
+        currentTime = origin.advanced(by: .seconds(600))
+        for failure in [IdleAssertion.idleSystem, .idleDisplay] {
+            power.refuse = failure
+            session.replace(.standard)
+
+            XCTAssertEqual(session.state.status, .active)
+            XCTAssertEqual(session.state.remainingTime, .seconds(1_200))
+            XCTAssertEqual(session.state.displayMode, .computerOnly)
+            XCTAssertTrue(session.state.error?.contains("replace") == true)
+            XCTAssertEqual(power.owned, previousAssertions)
+            XCTAssertEqual(SessionController(power: FakePower(), preferences: preferences).rememberedSelection, original)
+        }
+
+        power.owned.removeAll()
+        session.replace(.standard)
+        XCTAssertEqual(session.state.status, .inactive)
+        XCTAssertNil(session.state.countdown)
+        XCTAssertTrue(session.state.error?.contains("Previous timer protection could not be verified") == true)
+        XCTAssertTrue(power.owned.isEmpty)
+    }
+
+    func testInvalidSavedSelectionFallsBackToBothFirstUseDefaults() {
+        let preferences = testPreferences()
+        for (minutes, displayMode) in [("0", "computerOnly"), ("10081", "computerOnly"), ("15", "unknown")] {
+            preferences.set(["minutes": minutes, "displayMode": displayMode], forKey: "lastSuccessfulSession")
+
+            let session = SessionController(power: FakePower(), preferences: preferences)
+            XCTAssertEqual(session.rememberedSelection, .standard)
+            XCTAssertEqual(session.state.status, .inactive)
+        }
+    }
+
+    func testFailedReleaseOfPreviousProtectionDoesNotCommitReplacement() {
+        let preferences = testPreferences()
+        let power = FakePower()
+        let session = SessionController(power: power, preferences: preferences)
+        session.start()
+        power.refuseRelease = .idleDisplay
+
+        session.replace(SessionSelection(minutes: 60, displayMode: .computerOnly))
+
+        XCTAssertEqual(session.state.status, .inactive)
+        XCTAssertNil(session.state.countdown)
+        XCTAssertTrue(session.state.error?.contains("released") == true)
+        XCTAssertEqual(Array(power.owned.values), [.idleDisplay])
+        XCTAssertEqual(SessionController(power: FakePower(), preferences: preferences).rememberedSelection, .standard)
+
+        power.refuseRelease = nil
+        XCTAssertTrue(session.stop())
+        XCTAssertTrue(power.owned.isEmpty)
+    }
+
+    func testUnverifiedPowerDuringReplacementStopsAllProtectionAndPreservesPreferences() {
+        for unsafeSource in [nil, PowerSource.battery(percent: 20)] {
+            let preferences = testPreferences()
+            let power = FakePower()
+            let previous = SessionSelection(minutes: 60, displayMode: .computerOnly)
+            let session = SessionController(power: power, preferences: preferences)
+            session.start(previous)
+            power.nextPowerReadings = [.external, unsafeSource]
+
+            session.replace(.standard)
+
+            XCTAssertEqual(session.state.status, unsafeSource == nil ? .inactive : .stopped)
+            XCTAssertNil(session.state.remainingTime)
+            XCTAssertTrue(session.state.error?.contains(unsafeSource == nil ? "verified" : "20%") == true)
+            XCTAssertTrue(power.owned.isEmpty)
+            XCTAssertEqual(SessionController(power: FakePower(), preferences: preferences).rememberedSelection, previous)
+        }
+    }
+
+    func testOnlySuccessfulSelectionsAreRememberedAcrossColdLaunch() {
+        let preferences = testPreferences()
+        let power = FakePower()
+        let first = SessionSelection(minutes: 87, displayMode: .computerOnly)
+        let replacement = SessionSelection(minutes: 15, displayMode: .displayOn)
+        let session = SessionController(power: power, preferences: preferences)
+        XCTAssertEqual(session.rememberedSelection, .standard)
+
+        session.start(first)
+        XCTAssertEqual(SessionController(power: FakePower(), preferences: preferences).rememberedSelection, first)
+
+        session.replace(replacement)
+        session.stop()
+        power.refuse = .idleSystem
+        session.start(first)
+        let relaunched = SessionController(power: FakePower(), preferences: preferences)
+        XCTAssertEqual(relaunched.rememberedSelection, replacement)
+        XCTAssertEqual(relaunched.state.status, .inactive)
+        XCTAssertNil(relaunched.state.remainingTime)
+    }
+
+    private func testPreferences() -> UserDefaults {
+        let suite = "StillWorkingTests.\(UUID().uuidString)"
+        let preferences = UserDefaults(suiteName: suite)!
+        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        return preferences
+    }
+
+    func testReplacementStartsFullDurationWithTheNewModeWithoutAPowerGap() {
+        let power = FakePower()
+        let origin = ContinuousClock.now
+        var currentTime = origin
+        let session = SessionController(power: power, preferences: testPreferences(), now: { currentTime })
+        session.start()
+        power.requireSystemProtection = true
+
+        currentTime = origin.advanced(by: .seconds(600))
+        session.refresh()
+        XCTAssertEqual(session.state.remainingTime, .seconds(1_200))
+
+        session.replace(SessionSelection(minutes: 30, displayMode: .computerOnly))
+
+        XCTAssertEqual(session.state.remainingTime, .seconds(1_800))
+        XCTAssertEqual(session.state.displayMode, .computerOnly)
+        XCTAssertEqual(Array(power.owned.values), [.idleSystem])
+        XCTAssertFalse(power.lostRequiredSystemProtection)
+
+        currentTime = origin.advanced(by: .seconds(1_800))
+        session.refresh()
+        XCTAssertEqual(session.state.remainingTime, .seconds(600))
+    }
+
     func testComputerOnlySessionUsesSelectedDurationAndRestoresOnlySystemProtectionAfterWake() {
         let power = FakePower()
         let origin = ContinuousClock.now
         var currentTime = origin
-        let session = SessionController(power: power, now: { currentTime })
+        let session = SessionController(power: power, preferences: testPreferences(), now: { currentTime })
 
         session.start(SessionSelection(minutes: 15, displayMode: .computerOnly))
 
@@ -29,7 +162,7 @@ final class SessionControllerTests: XCTestCase {
 
     func testCustomDurationStartsAtMinimumIntermediateAndMaximum() throws {
         let origin = ContinuousClock.now
-        let session = SessionController(power: FakePower(), now: { origin })
+        let session = SessionController(power: FakePower(), preferences: testPreferences(), now: { origin })
         var draft = SessionDraft()
         draft.preset = .custom
 
@@ -68,7 +201,7 @@ final class SessionControllerTests: XCTestCase {
             (.twoHours, .seconds(7_200)), (.fourHours, .seconds(14_400))
         ]
         let origin = ContinuousClock.now
-        let session = SessionController(power: FakePower(), now: { origin })
+        let session = SessionController(power: FakePower(), preferences: testPreferences(), now: { origin })
         var draft = SessionDraft()
 
         XCTAssertEqual(draft.preset, .halfHour)
@@ -87,7 +220,7 @@ final class SessionControllerTests: XCTestCase {
     func testCountdownRoundsUpToTheLastSecondAndFormatsTotalHours() {
         let origin = ContinuousClock.now
         var currentTime = origin
-        let session = SessionController(power: FakePower(), now: { currentTime })
+        let session = SessionController(power: FakePower(), preferences: testPreferences(), now: { currentTime })
         session.start(SessionSelection(minutes: 10_080, displayMode: .displayOn))
         XCTAssertEqual(session.state.countdown, "168:00:00")
 
@@ -110,7 +243,7 @@ final class SessionControllerTests: XCTestCase {
 
     func testBatteryFloorRefusesStartAndExternalPowerAllowsManualStart() {
         let power = FakePower()
-        let session = SessionController(power: power)
+        let session = SessionController(power: power, preferences: testPreferences())
 
         for percent in [19, 20] {
             power.source = .battery(percent: Double(percent))
@@ -129,7 +262,7 @@ final class SessionControllerTests: XCTestCase {
 
     func testUnpluggingAtFloorStopsTimerAndReconnectingDoesNotRestartIt() {
         let power = FakePower()
-        let session = SessionController(power: power)
+        let session = SessionController(power: power, preferences: testPreferences())
         power.source = .battery(percent: 21)
         session.start()
         XCTAssertEqual(session.state.status, .active)
@@ -154,7 +287,7 @@ final class SessionControllerTests: XCTestCase {
     func testPartialAcquisitionFailureReleasesSystemAssertion() {
         let power = FakePower()
         power.refuse = .idleDisplay
-        let session = SessionController(power: power)
+        let session = SessionController(power: power, preferences: testPreferences())
 
         session.start()
 
@@ -166,7 +299,7 @@ final class SessionControllerTests: XCTestCase {
 
     func testUnavailablePowerStatePreventsStartAndStopsAfterWake() {
         let power = FakePower()
-        let session = SessionController(power: power)
+        let session = SessionController(power: power, preferences: testPreferences())
         power.source = nil
 
         session.start()
@@ -189,7 +322,7 @@ final class SessionControllerTests: XCTestCase {
         let power = FakePower()
         let origin = ContinuousClock.now
         var currentTime = origin
-        let session = SessionController(power: power, now: { currentTime })
+        let session = SessionController(power: power, preferences: testPreferences(), now: { currentTime })
         session.start()
         power.owned = power.owned.filter { $0.value == .idleSystem }
 
@@ -213,7 +346,7 @@ final class SessionControllerTests: XCTestCase {
 
     func testFailedWakeRestorationReleasesOldAndPartialProtection() {
         let power = FakePower()
-        let session = SessionController(power: power)
+        let session = SessionController(power: power, preferences: testPreferences())
         session.start()
         power.owned = power.owned.filter { $0.value == .idleSystem }
         power.refuse = .idleDisplay
@@ -228,7 +361,7 @@ final class SessionControllerTests: XCTestCase {
 
     func testUnexpectedReleaseFailureIsReportedAndCanBeRetried() {
         let power = FakePower()
-        let session = SessionController(power: power)
+        let session = SessionController(power: power, preferences: testPreferences())
         session.start()
         power.refuseRelease = .idleDisplay
 
@@ -249,7 +382,7 @@ final class SessionControllerTests: XCTestCase {
         let power = FakePower()
         let origin = ContinuousClock.now
         var currentTime = origin
-        let session = SessionController(power: power, now: { currentTime })
+        let session = SessionController(power: power, preferences: testPreferences(), now: { currentTime })
 
         XCTAssertEqual(session.state.status, .inactive)
         XCTAssertTrue(power.owned.isEmpty)
@@ -277,15 +410,19 @@ final class SessionControllerTests: XCTestCase {
 private final class FakePower: SessionPower {
     var owned: [UInt32: IdleAssertion] = [:]
     var timeouts: [Duration] = []
+    var requireSystemProtection = false
+    private(set) var lostRequiredSystemProtection = false
     private var nextID: UInt32 = 0
 
     var refuse: IdleAssertion?
     var refuseRelease: IdleAssertion?
     var source: PowerSource? = .external
+    var nextPowerReadings: [PowerSource?] = []
 
     func readPowerSource() throws -> PowerSource {
-        guard let source else { throw FakeFailure.native }
-        return source
+        let reading = nextPowerReadings.isEmpty ? source : nextPowerReadings.removeFirst()
+        guard let reading else { throw FakeFailure.native }
+        return reading
     }
 
     func acquire(_ kind: IdleAssertion, timeout: Duration) throws -> UInt32 {
@@ -299,6 +436,9 @@ private final class FakePower: SessionPower {
     func release(_ id: UInt32) throws {
         if let kind = owned[id], kind == refuseRelease { throw FakeFailure.native }
         owned.removeValue(forKey: id)
+        if requireSystemProtection && !owned.values.contains(.idleSystem) {
+            lostRequiredSystemProtection = true
+        }
     }
 
     func isActive(_ id: UInt32) -> Bool { owned[id] != nil }

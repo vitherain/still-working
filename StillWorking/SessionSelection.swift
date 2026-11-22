@@ -1,4 +1,4 @@
-enum DisplayMode: Equatable {
+enum DisplayMode: String {
     case displayOn
     case computerOnly
 }
