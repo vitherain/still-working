@@ -5,7 +5,9 @@ Sources were checked on 2026-11-07, with follow-up investigations dated below.
 Approval does not mean runtime validation: no controlled sleep-prevention
 experiment has been run. A retrospective system-log observation is recorded
 below. Source-based findings, observations, inferences, uncertainties, and
-required verification remain distinguished.
+required verification remain distinguished. On 2026-11-22 the owner returned
+the project to idle-only protection. The closed-lid investigation below documents
+the previous scope and is no longer an implementation gate.
 
 ## Sleep prevention
 
@@ -27,8 +29,7 @@ owner selected direct public macOS APIs rather than spawning this command.
 Apple documents that
 [idle system sleep prevention](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep)
 does not cover lid closure, explicit sleep, low battery, or every other cause of
-system sleep. These assertions alone do not establish the product's required
-closed-lid operation.
+system sleep. That boundary matches the current idle-only scope.
 
 [Idle display sleep prevention](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridledisplaysleep)
 does not itself turn on an already sleeping display. Preventing display sleep
@@ -187,11 +188,10 @@ purchase, signing identity, or App Store release has been selected or authorized
 
 ## Addendum: requested closed-lid operation on battery
 
-Investigated on 2026-11-08 after baseline approval. This addendum records a new
-requirement and findings; it is not an approved implementation or tested claim
-of support on the target Mac.
+Historical investigation from 2026-11-08, superseded by the 2026-11-22
+idle-only scope decision.
 
-- The owner wants background agents to continue with the MacBook lid closed
+- At the time, the owner wanted background agents to continue with the MacBook lid closed
   while running on battery. The existing idle-sleep assertions do not guarantee
   this requirement. Apple's archived
   [power-management release notes](https://developer.apple.com/library/archive/releasenotes/Darwin/RN-IOKitPowerManagment/index.html)
@@ -322,11 +322,6 @@ execution. The log does not establish what Codex executed during the interval,
 whether the hotspot showed a live connection throughout, or whether this was
 the interval the owner described. The exact command flags were not recovered.
 
-The observation supports the need to verify closed-lid operation separately
-from idle protection. It does not prove that a privileged helper is necessary,
-or validate the proposed system-wide override. Before choosing a mechanism,
-run a controlled test on battery without an external display, record actual
-local computation progress across lid closure, and correlate it with sleep/wake
-logs. Hotspot visibility and a running session countdown are insufficient
-acceptance evidence. No power settings were changed and no helper was installed
-for this review.
+The observation shows that ordinary idle protection allowed lid-close sleep
+in that configuration. No power settings were changed and no helper was
+installed for this review.
