@@ -33,7 +33,8 @@ The project is licensed under [MIT](LICENSE).
 A fresh launch opens inactive and preselects the last successful duration and
 mode. First use starts with 30 minutes and **Keep display on** selected. In the
 panel, use Tab and Shift–Tab to move focus and Space to activate a focused
-control.
+control. Press Return or Enter to start or replace a timer with a valid duration
+when the Duration menu is closed.
 
 ## Build and launch locally
 

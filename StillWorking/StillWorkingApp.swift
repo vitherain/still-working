@@ -31,7 +31,8 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         item.button?.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         item.button?.setAccessibilityLabel("StillWorking")
 
-        settingsPanel.contentViewController = NSHostingController(rootView: panel(for: session.state))
+        let panel = SessionPanel(session: session, quit: { [weak self] in self?.quit() })
+        settingsPanel.contentViewController = NSHostingController(rootView: panel)
         sessionObserver = session.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
@@ -87,9 +88,6 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         button?.title = state.countdown ?? ""
         button?.setAccessibilityValue(state.accessibleSummary)
         settingsPanel.updatePosition()
-        if let host = settingsPanel.contentViewController as? NSHostingController<SessionPanel> {
-            host.rootView = panel(for: state)
-        }
 
         refreshTimer?.invalidate()
         if let remaining = state.remainingTime {
@@ -100,17 +98,6 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
             RunLoop.main.add(timer, forMode: .common)
             refreshTimer = timer
         }
-    }
-
-    private func panel(for state: SessionController.State) -> SessionPanel {
-        SessionPanel(
-            state: state,
-            initialSelection: session.rememberedSelection,
-            start: { [weak self] in self?.session.start($0) },
-            replace: { [weak self] in self?.session.replace($0) },
-            stop: { [weak self] in self?.session.stop() },
-            quit: { [weak self] in self?.quit() }
-        )
     }
 
     private func quit() {
@@ -192,7 +179,10 @@ private final class StatusItemPanel: NSPanel, NSWindowDelegate {
         let x = max(visibleFrame.minX, min(point.x - frame.width / 2, visibleFrame.maxX - frame.width))
         let top = min(point.y, visibleFrame.maxY) - 4
         let y = min(visibleFrame.maxY, max(top, visibleFrame.minY + frame.height))
-        setFrameTopLeftPoint(CGPoint(x: x, y: y))
+        let origin = CGPoint(x: x.rounded(), y: (y - frame.height).rounded())
+        if frame.origin != origin {
+            setFrameOrigin(origin)
+        }
     }
 
     private func buttonAnchor(_ button: NSStatusBarButton, on screen: NSScreen) -> CGPoint? {
@@ -204,53 +194,27 @@ private final class StatusItemPanel: NSPanel, NSWindowDelegate {
 }
 
 private struct SessionPanel: View {
-    let state: SessionController.State
-    let start: (SessionSelection) -> Void
-    let replace: (SessionSelection) -> Void
-    let stop: () -> Void
+    let session: SessionController
     let quit: () -> Void
-
     @State private var draft: SessionDraft
+    @State private var isActive: Bool
 
-    init(
-        state: SessionController.State,
-        initialSelection: SessionSelection,
-        start: @escaping (SessionSelection) -> Void,
-        replace: @escaping (SessionSelection) -> Void,
-        stop: @escaping () -> Void,
-        quit: @escaping () -> Void
-    ) {
-        self.state = state
-        self.start = start
-        self.replace = replace
-        self.stop = stop
+    init(session: SessionController, quit: @escaping () -> Void) {
+        self.session = session
         self.quit = quit
-        _draft = State(initialValue: SessionDraft(selection: initialSelection))
+        _draft = State(initialValue: SessionDraft(selection: session.rememberedSelection))
+        _isActive = State(initialValue: session.state.status == .active)
     }
 
     var body: some View {
         let selection = draft.selection
-        let validSelection = try? selection.get()
+        let replacing = isActive
         VStack(alignment: .leading, spacing: 12) {
             Text("StillWorking")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
 
-            if let countdown = state.countdown, let mode = state.displayMode {
-                Text(countdown)
-                    .font(.system(.largeTitle, design: .monospaced))
-                    .accessibilityLabel("Remaining time")
-                    .accessibilityValue(state.accessibleSummary)
-                Text("Active · \(mode.label)")
-            } else {
-                Text(state.status.label)
-            }
-
-            if let error = state.error {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            SessionSummary(session: session)
 
             Divider()
 
@@ -266,6 +230,7 @@ private struct SessionPanel: View {
                     durationField("Hours", text: $draft.hours)
                     durationField("Minutes", text: $draft.minutes)
                 }
+                .onSubmit { submitDraft(replacing: replacing) }
             }
 
             if case let .failure(problem) = selection {
@@ -277,26 +242,18 @@ private struct SessionPanel: View {
             Toggle("Keep display on", isOn: $draft.keepDisplayOn)
 
             HStack {
-                if state.status == .active {
-                    Button("Replace Timer") {
-                        if let validSelection {
-                            replace(validSelection)
-                        }
-                    }
-                    .disabled(validSelection == nil)
-                    Button("Stop", action: stop)
+                Button(replacing ? "Replace Timer" : "Start") {
+                    submitDraft(replacing: replacing)
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled((try? selection.get()) == nil)
+
+                if replacing {
+                    Button("Stop") { session.stop() }
                         .keyboardShortcut(".", modifiers: .command)
-                } else {
-                    Button("Start") {
-                        if let validSelection {
-                            start(validSelection)
-                        }
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(validSelection == nil)
                 }
                 Spacer()
-                Button(state.status == .active ? "Stop Timer and Quit" : "Quit", action: quit)
+                Button(replacing ? "Stop Timer and Quit" : "Quit", action: quit)
                     .keyboardShortcut("q", modifiers: .command)
             }
 
@@ -307,6 +264,16 @@ private struct SessionPanel: View {
         }
         .padding(16)
         .frame(width: 350)
+        .onReceive(session.$state.map { $0.status == .active }.removeDuplicates()) { isActive = $0 }
+    }
+
+    private func submitDraft(replacing: Bool) {
+        guard let selection = try? draft.selection.get() else { return }
+        if replacing {
+            session.replace(selection)
+        } else {
+            session.start(selection)
+        }
     }
 
     private func durationField(_ label: String, text: Binding<String>) -> some View {
@@ -317,6 +284,31 @@ private struct SessionPanel: View {
             TextField(label, text: text)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityLabel(label)
+        }
+    }
+}
+
+private struct SessionSummary: View {
+    @ObservedObject var session: SessionController
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 12) {
+            if let countdown = state.countdown, let mode = state.displayMode {
+                Text(countdown)
+                    .font(.system(.largeTitle, design: .monospaced))
+                    .accessibilityLabel("Remaining time")
+                    .accessibilityValue(state.accessibleSummary)
+                Text("Active · \(mode.label)")
+            } else {
+                Text(state.status.label)
+            }
+
+            if let error = state.error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
