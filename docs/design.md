@@ -263,3 +263,17 @@ manual-Sleep workaround are obsolete. The
 [closed-lid research](research.md#addendum-requested-closed-lid-operation-on-battery)
 and [feasibility issue](https://github.com/vitherain/still-working/issues/2)
 record the earlier investigation.
+
+## Closed-lid feasibility follow-up
+
+On 2026-11-24 the owner agreed to revisit optional closed-lid protection for a
+finite keep-awake session on battery without an external display. The feasibility
+target is operation under regular user permissions, with Apple menu → Sleep and
+macOS emergency and thermal protections available during the session. The
+existing 20% battery floor still applies.
+
+If [the feasibility investigation](https://github.com/vitherain/still-working/issues/2)
+finds no viable route under regular user permissions, record a no-go under those
+constraints. One-time administrator-approved setup may then be reconsidered as
+a fallback in a separate decision. Any fallback must still preserve manual Sleep
+and emergency and thermal protections.
