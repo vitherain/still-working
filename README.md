@@ -30,11 +30,16 @@ The project is licensed under [MIT](LICENSE).
    starts a new session for the full selected duration. **Stop** ends the
    session early. Closing the panel leaves the timer running.
 
-A fresh launch opens inactive and preselects the last successful duration and
-mode. First use starts with 30 minutes and **Keep display on** selected. In the
-panel, use Tab and Shift–Tab to move focus and Space to activate a focused
-control. Press Return or Enter to start or replace a timer with a valid duration
-when the Duration menu is closed.
+A fresh launch starts with an inactive timer and preselects the last successful
+duration and mode. First use starts with 30 minutes and **Keep display on**
+selected. In the panel, use Tab and Shift–Tab to move focus and Space to activate
+a focused control. Press Return or Enter to start or replace a timer with a
+valid duration when the Duration menu is closed.
+
+**Launch at Login** is off by default. Enable it in the panel to show the menu
+bar icon after you sign in. The panel stays closed until you open it. If macOS
+requires approval, use **Open Login Items in System Settings** from the panel.
+Turning off **Launch at Login** leaves the app and any running timer active.
 
 ## Build and launch locally
 

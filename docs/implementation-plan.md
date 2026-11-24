@@ -48,7 +48,8 @@ polish may be refined without changing behavior.
 - Natural expiry shows `Finished`; manual stop shows `Stopped`. Both remove the
   countdown and show the inactive icon. The app remains available, silently.
 - Reopening the running `.app` shows the same panel and session, without a second
-  instance or timer change. A cold launch opens inactive and presents the panel.
+  instance or timer change. A manual cold launch opens inactive and presents
+  the panel. See [Launch at Login](design.md#launch-at-login) for automatic launch.
 
 ### Validation, errors, and preferences
 
@@ -180,7 +181,7 @@ split. Test behavior and ownership rather than implementation snapshots.
 | Lifecycle | Reopen reveals the same session. Process exit releases protection; a subsequent cold launch is inactive with remembered inputs. Coordinate a real restart check with the owner if not already observed. |
 | Interface | Exercise presets, custom fields, mode, start, replace, stop, dismiss, reopen, and quit. Inspect long countdown width, keyboard access, and accessible control labels. |
 | Quiet completion | Countdown disappears, icon is inactive, panel shows finished, app remains available. No completion sound or notification permission request. |
-| Settings and limits | No persistent settings changes. Record observed display/locking behavior without universal claims. |
+| Settings and limits | No persistent power or security settings changes. Record observed display/locking behavior without universal claims. |
 
 Real sleep, display-idle observations, restart, and system clock changes can
 interrupt the owner's desktop. Coordinate these observations; do not automatically
@@ -192,9 +193,9 @@ rather than claiming full milestone completion.
 ## Explicitly later
 
 Public name checks, CLI and command naming, localization beyond English,
-automatic login launch, indefinite/scheduled
-sessions, broader compatibility promises, download packaging, notarization,
-Developer Program costs, and public update delivery are outside this plan.
+indefinite or scheduled sessions, broader compatibility promises, download
+packaging, notarization, Developer Program costs, and public update delivery
+are outside this plan.
 
 ## Approval record
 

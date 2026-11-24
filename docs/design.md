@@ -174,9 +174,16 @@ plan on 2026-11-08.
 - Use English for the initial user interface, consistent with the owner's
   instruction that repository outputs are in English. Localization can be
   considered for a later milestone.
-- Automatic user-session launch at login and scheduled/indefinite sessions remain
-  outside this milestone. Run as a regular user and preserve persistent power
-  and security settings.
+- Scheduled and indefinite sessions remain outside this milestone. Run as a
+  regular user and preserve persistent power and security settings.
+
+### Launch at Login
+
+Launch at Login is an opt-in follow-up to the original timer milestone. The
+checkbox reflects macOS Login Items status. Automatic launch shows the menu bar
+icon with the panel closed. Manual opening shows the panel. Both launch paths
+begin with an inactive timer and the last successful timer choices.
+See [issue #15](https://github.com/vitherain/still-working/issues/15).
 
 ## Remaining questions and deferred decisions
 
