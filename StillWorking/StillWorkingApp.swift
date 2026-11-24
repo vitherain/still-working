@@ -17,7 +17,7 @@ enum StillWorkingApp {
 @MainActor
 private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
     private let session = SessionController(power: MacPower(), preferences: .standard)
-    private let popover = NSPopover()
+    private let settingsPanel = StatusItemPanel()
     private var statusItem: NSStatusItem?
     private var sessionObserver: AnyCancellable?
     private var refreshTimer: Timer?
@@ -26,13 +26,12 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem = item
         item.button?.target = self
-        item.button?.action = #selector(togglePanel)
+        item.button?.action = #selector(togglePanel(_:))
         item.button?.imagePosition = .imageLeading
         item.button?.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         item.button?.setAccessibilityLabel("StillWorking")
 
-        popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: panel(for: session.state))
+        settingsPanel.contentViewController = NSHostingController(rootView: panel(for: session.state))
         sessionObserver = session.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
@@ -56,24 +55,21 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         session.stop()
     }
 
-    @objc private func togglePanel() {
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            showPanel()
-        }
+    @objc private func togglePanel(_ button: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        let mouseLocation = event?.type == .leftMouseUp ? event?.cgEvent?.unflippedLocation : nil
+        session.refresh()
+        settingsPanel.present(relativeTo: button, mouseLocation: mouseLocation, toggling: true)
     }
 
     private func showPanel() {
+        guard let button = statusItem?.button else { return }
         session.refresh()
-        guard let button = statusItem?.button, !popover.isShown else { return }
-        if #available(macOS 14, *) {
-            NSApp.activate()
-        } else {
-            NSApp.activate(ignoringOtherApps: true)
-        }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        popover.contentViewController?.view.window?.makeKey()
+        settingsPanel.present(relativeTo: button)
+    }
+
+    func applicationDidChangeScreenParameters(_ notification: Notification) {
+        settingsPanel.dismiss()
     }
 
     @objc private func didWake(_ notification: Notification) {
@@ -90,7 +86,8 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         button?.title = state.countdown ?? ""
         button?.setAccessibilityValue(state.accessibleSummary)
-        if let host = popover.contentViewController as? NSHostingController<SessionPanel> {
+        settingsPanel.updatePosition()
+        if let host = settingsPanel.contentViewController as? NSHostingController<SessionPanel> {
             host.rootView = panel(for: state)
         }
 
@@ -118,7 +115,7 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
 
     private func quit() {
         if !session.stop() {
-            popover.performClose(nil)
+            settingsPanel.dismiss()
             let alert = NSAlert()
             alert.messageText = "Could not confirm release"
             alert.informativeText = session.state.error ?? ""
@@ -126,6 +123,83 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
             alert.runModal()
         }
         NSApp.terminate(nil)
+    }
+}
+
+@MainActor
+private final class StatusItemPanel: NSPanel, NSWindowDelegate {
+    private var anchor: (button: NSStatusBarButton, screen: NSScreen, fallback: CGPoint)?
+
+    init() {
+        super.init(
+            contentRect: .zero,
+            styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel],
+            backing: .buffered,
+            defer: true
+        )
+        title = "StillWorking"
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+        isMovable = false
+        level = .floating
+        animationBehavior = .none
+        collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
+        delegate = self
+    }
+
+    func present(relativeTo button: NSStatusBarButton, mouseLocation: CGPoint? = nil, toggling: Bool = false) {
+        guard let window = button.window else { return }
+        // Use the click's display when AppKit's shared status button is still on another one.
+        let clickedScreen = mouseLocation.flatMap { point in
+            NSScreen.screens.first { $0.frame.contains(point) }
+        }
+        guard let targetScreen = clickedScreen ?? window.screen else { return }
+
+        if isVisible && screen == targetScreen {
+            if toggling { dismiss() }
+            return
+        }
+
+        let clickAnchor = mouseLocation.map { CGPoint(x: $0.x, y: targetScreen.visibleFrame.maxY) }
+        guard let point = buttonAnchor(button, on: targetScreen) ?? clickAnchor else { return }
+        anchor = (button, targetScreen, point)
+        updatePosition()
+        makeKeyAndOrderFront(nil)
+    }
+
+    func dismiss() {
+        guard anchor != nil else { return }
+        anchor = nil
+        orderOut(nil)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        updatePosition()
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        dismiss()
+    }
+
+    override func cancelOperation(_ sender: Any?) {
+        dismiss()
+    }
+
+    func updatePosition() {
+        guard let anchor else { return }
+        let point = buttonAnchor(anchor.button, on: anchor.screen) ?? anchor.fallback
+        let visibleFrame = anchor.screen.visibleFrame
+        let x = max(visibleFrame.minX, min(point.x - frame.width / 2, visibleFrame.maxX - frame.width))
+        let top = min(point.y, visibleFrame.maxY) - 4
+        let y = min(visibleFrame.maxY, max(top, visibleFrame.minY + frame.height))
+        setFrameTopLeftPoint(CGPoint(x: x, y: y))
+    }
+
+    private func buttonAnchor(_ button: NSStatusBarButton, on screen: NSScreen) -> CGPoint? {
+        guard let window = button.window else { return nil }
+        let bounds = window.convertToScreen(button.convert(button.bounds, to: nil))
+        guard screen.frame.contains(CGPoint(x: bounds.midX, y: bounds.midY)) else { return nil }
+        return CGPoint(x: bounds.midX, y: bounds.minY)
     }
 }
 
