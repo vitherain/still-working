@@ -64,3 +64,22 @@ Use `pmset -g custom` for the configured idle limits, `pmset -g assertions` to
 identify assertions by process, and `pmset -g log` for recorded sleep and wake
 events. Run these observations with the device's normal settings and record any
 other software or accessories that affect them.
+
+## Launch at Login (2026-11-24)
+
+An ad-hoc-signed Release copy with its own bundle identifier in `~/Applications`
+started with Launch at Login off. The panel enabled and disabled the item.
+Removing the test item in System Settings cleared the checkbox when the panel
+reopened. Disabling the item while a timer ran preserved the process and countdown.
+Manual cold launch and reopen through Launch Services showed the panel with the
+item enabled. Cold launch kept the timer inactive and recalled computer-only mode.
+
+A synthetic login-marked open event left the panel closed and the timer inactive.
+An isolated test build with injected approval and registration/removal failures
+showed the corresponding messages, kept the checkbox in sync with the reported
+status, and opened Login Items from the approval message.
+
+Actual sign-out and sign-in checks remain open. With **Reopen windows when
+logging back in** unchecked, verify that the enabled item launches to the menu
+bar with the panel closed and timer inactive. Disable the item and repeat to
+verify that macOS skips the app. See [issue #15](https://github.com/vitherain/still-working/issues/15).

@@ -1,5 +1,7 @@
 import AppKit
 import Combine
+import CoreServices
+import ServiceManagement
 import SwiftUI
 
 @main
@@ -21,6 +23,14 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var sessionObserver: AnyCancellable?
     private var refreshTimer: Timer?
+    private var requestedPanelOnLaunch = false
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSAppleEventManager.shared().setEventHandler(
+            self, andSelector: #selector(openApplication(_:reply:)),
+            forEventClass: kCoreEventClass, andEventID: kAEOpenApplication
+        )
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -41,6 +51,22 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(didWake(_:)), name: NSWorkspace.didWakeNotification, object: nil
         )
+        if requestedPanelOnLaunch {
+            showPanelAfterLaunching()
+        }
+    }
+
+    @objc private func openApplication(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
+        // Read the login marker while AppKit is handling the open event.
+        guard event.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue != keyAELaunchedAsLogInItem else { return }
+        if statusItem == nil {
+            requestedPanelOnLaunch = true
+        } else {
+            showPanelAfterLaunching()
+        }
+    }
+
+    private func showPanelAfterLaunching() {
         // Let AppKit place the new status item before using it as the popover anchor.
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(250)) { [weak self] in
             self?.showPanel()
@@ -261,6 +287,10 @@ private struct SessionPanel: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
+            LaunchAtLoginControl()
         }
         .padding(16)
         .frame(width: 350)
@@ -284,6 +314,60 @@ private struct SessionPanel: View {
             TextField(label, text: text)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityLabel(label)
+        }
+    }
+}
+
+private struct LaunchAtLoginControl: View {
+    @State private var status = SMAppService.mainApp.status
+    @State private var failure: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Launch at Login", isOn: Binding(
+                get: { status == .enabled }, set: { setEnabled($0) }
+            ))
+            .toggleStyle(.checkbox)
+            .disabled(status == .requiresApproval)
+
+            if status == .requiresApproval {
+                Text("macOS requires approval in Login Items.")
+                    .foregroundStyle(.secondary)
+                Button("Open Login Items in System Settings") {
+                    SMAppService.openSystemSettingsLoginItems()
+                }
+            }
+
+            if let failure {
+                Text(failure)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            let currentStatus = SMAppService.mainApp.status
+            if status != currentStatus {
+                failure = nil
+                status = currentStatus
+            }
+        }
+    }
+
+    private func setEnabled(_ enabled: Bool) {
+        let service = SMAppService.mainApp
+        let currentStatus = service.status
+        failure = nil
+        defer { status = service.status }
+
+        do {
+            if enabled && currentStatus != .enabled && currentStatus != .requiresApproval {
+                try service.register()
+            } else if !enabled && (currentStatus == .enabled || currentStatus == .requiresApproval) {
+                try service.unregister()
+            }
+        } catch {
+            let action = enabled ? "enable" : "disable"
+            failure = "Could not \(action) Launch at Login. \(error.localizedDescription)"
         }
     }
 }
