@@ -92,11 +92,13 @@ Use macOS 13 as the API/deployment baseline for `ContinuousClock`. Verify on
 the owner's macOS 26.6.2 arm64 machine with the installed Xcode/SDK. This does not
 constitute tested support for other macOS releases or Intel Macs.
 
-Use an AppKit `NSStatusItem`, `NSPopover`, and application delegate, with a SwiftUI
-panel hosted by `NSHostingController`. This small integration supports explicit
-reopen through public APIs. Pure SwiftUI `MenuBarExtra` has no public presentation
-binding on the selected baseline, making the exact reopen behavior less direct.
-Use `LSUIElement` metadata for menu bar agent behavior.
+Use an AppKit `NSStatusItem`, `NSPanel`, and application delegate, with SwiftUI
+content hosted by `NSHostingController`. The panel is positioned under the
+status item on the invoking display and ordered out on dismissal. This
+integration supports explicit reopen through public APIs. Pure SwiftUI
+`MenuBarExtra` has no public presentation binding on the selected baseline,
+making the exact reopen behavior less direct. Use `LSUIElement` metadata for
+menu bar agent behavior.
 
 Produce a local `.app` with local/ad-hoc signing as required by the toolchain.
 Verify double-click launch and document exact successful build/install/remove

@@ -19,7 +19,7 @@ protocol SessionPower {
     func isActive(_ id: UInt32) -> Bool
 }
 
-final class SessionController {
+final class SessionController: ObservableObject {
     enum Status: Equatable {
         case inactive
         case active

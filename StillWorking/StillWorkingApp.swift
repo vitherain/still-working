@@ -17,7 +17,7 @@ enum StillWorkingApp {
 @MainActor
 private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
     private let session = SessionController(power: MacPower(), preferences: .standard)
-    private let popover = NSPopover()
+    private let settingsPanel = StatusItemPanel()
     private var statusItem: NSStatusItem?
     private var sessionObserver: AnyCancellable?
     private var refreshTimer: Timer?
@@ -26,13 +26,13 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem = item
         item.button?.target = self
-        item.button?.action = #selector(togglePanel)
+        item.button?.action = #selector(togglePanel(_:))
         item.button?.imagePosition = .imageLeading
         item.button?.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         item.button?.setAccessibilityLabel("StillWorking")
 
-        popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: panel(for: session.state))
+        let panel = SessionPanel(session: session, quit: { [weak self] in self?.quit() })
+        settingsPanel.contentViewController = NSHostingController(rootView: panel)
         sessionObserver = session.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
@@ -56,24 +56,21 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         session.stop()
     }
 
-    @objc private func togglePanel() {
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            showPanel()
-        }
+    @objc private func togglePanel(_ button: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        let mouseLocation = event?.type == .leftMouseUp ? event?.cgEvent?.unflippedLocation : nil
+        session.refresh()
+        settingsPanel.present(relativeTo: button, mouseLocation: mouseLocation, toggling: true)
     }
 
     private func showPanel() {
+        guard let button = statusItem?.button else { return }
         session.refresh()
-        guard let button = statusItem?.button, !popover.isShown else { return }
-        if #available(macOS 14, *) {
-            NSApp.activate()
-        } else {
-            NSApp.activate(ignoringOtherApps: true)
-        }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        popover.contentViewController?.view.window?.makeKey()
+        settingsPanel.present(relativeTo: button)
+    }
+
+    func applicationDidChangeScreenParameters(_ notification: Notification) {
+        settingsPanel.dismiss()
     }
 
     @objc private func didWake(_ notification: Notification) {
@@ -90,9 +87,7 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         button?.title = state.countdown ?? ""
         button?.setAccessibilityValue(state.accessibleSummary)
-        if let host = popover.contentViewController as? NSHostingController<SessionPanel> {
-            host.rootView = panel(for: state)
-        }
+        settingsPanel.updatePosition()
 
         refreshTimer?.invalidate()
         if let remaining = state.remainingTime {
@@ -105,20 +100,9 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func panel(for state: SessionController.State) -> SessionPanel {
-        SessionPanel(
-            state: state,
-            initialSelection: session.rememberedSelection,
-            start: { [weak self] in self?.session.start($0) },
-            replace: { [weak self] in self?.session.replace($0) },
-            stop: { [weak self] in self?.session.stop() },
-            quit: { [weak self] in self?.quit() }
-        )
-    }
-
     private func quit() {
         if !session.stop() {
-            popover.performClose(nil)
+            settingsPanel.dismiss()
             let alert = NSAlert()
             alert.messageText = "Could not confirm release"
             alert.informativeText = session.state.error ?? ""
@@ -129,54 +113,108 @@ private final class StillWorkingDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+@MainActor
+private final class StatusItemPanel: NSPanel, NSWindowDelegate {
+    private var anchor: (button: NSStatusBarButton, screen: NSScreen, fallback: CGPoint)?
+
+    init() {
+        super.init(
+            contentRect: .zero,
+            styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel],
+            backing: .buffered,
+            defer: true
+        )
+        title = "StillWorking"
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+        isMovable = false
+        level = .floating
+        animationBehavior = .none
+        collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
+        delegate = self
+    }
+
+    func present(relativeTo button: NSStatusBarButton, mouseLocation: CGPoint? = nil, toggling: Bool = false) {
+        guard let window = button.window else { return }
+        // Use the click's display when AppKit's shared status button is still on another one.
+        let clickedScreen = mouseLocation.flatMap { point in
+            NSScreen.screens.first { $0.frame.contains(point) }
+        }
+        guard let targetScreen = clickedScreen ?? window.screen else { return }
+
+        if isVisible && screen == targetScreen {
+            if toggling { dismiss() }
+            return
+        }
+
+        let clickAnchor = mouseLocation.map { CGPoint(x: $0.x, y: targetScreen.visibleFrame.maxY) }
+        guard let point = buttonAnchor(button, on: targetScreen) ?? clickAnchor else { return }
+        anchor = (button, targetScreen, point)
+        updatePosition()
+        makeKeyAndOrderFront(nil)
+    }
+
+    func dismiss() {
+        guard anchor != nil else { return }
+        anchor = nil
+        orderOut(nil)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        updatePosition()
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        dismiss()
+    }
+
+    override func cancelOperation(_ sender: Any?) {
+        dismiss()
+    }
+
+    func updatePosition() {
+        guard let anchor else { return }
+        let point = buttonAnchor(anchor.button, on: anchor.screen) ?? anchor.fallback
+        let visibleFrame = anchor.screen.visibleFrame
+        let x = max(visibleFrame.minX, min(point.x - frame.width / 2, visibleFrame.maxX - frame.width))
+        let top = min(point.y, visibleFrame.maxY) - 4
+        let y = min(visibleFrame.maxY, max(top, visibleFrame.minY + frame.height))
+        let origin = CGPoint(x: x.rounded(), y: (y - frame.height).rounded())
+        if frame.origin != origin {
+            setFrameOrigin(origin)
+        }
+    }
+
+    private func buttonAnchor(_ button: NSStatusBarButton, on screen: NSScreen) -> CGPoint? {
+        guard let window = button.window else { return nil }
+        let bounds = window.convertToScreen(button.convert(button.bounds, to: nil))
+        guard screen.frame.contains(CGPoint(x: bounds.midX, y: bounds.midY)) else { return nil }
+        return CGPoint(x: bounds.midX, y: bounds.minY)
+    }
+}
+
 private struct SessionPanel: View {
-    let state: SessionController.State
-    let start: (SessionSelection) -> Void
-    let replace: (SessionSelection) -> Void
-    let stop: () -> Void
+    let session: SessionController
     let quit: () -> Void
-
     @State private var draft: SessionDraft
+    @State private var isActive: Bool
 
-    init(
-        state: SessionController.State,
-        initialSelection: SessionSelection,
-        start: @escaping (SessionSelection) -> Void,
-        replace: @escaping (SessionSelection) -> Void,
-        stop: @escaping () -> Void,
-        quit: @escaping () -> Void
-    ) {
-        self.state = state
-        self.start = start
-        self.replace = replace
-        self.stop = stop
+    init(session: SessionController, quit: @escaping () -> Void) {
+        self.session = session
         self.quit = quit
-        _draft = State(initialValue: SessionDraft(selection: initialSelection))
+        _draft = State(initialValue: SessionDraft(selection: session.rememberedSelection))
+        _isActive = State(initialValue: session.state.status == .active)
     }
 
     var body: some View {
         let selection = draft.selection
-        let validSelection = try? selection.get()
+        let replacing = isActive
         VStack(alignment: .leading, spacing: 12) {
             Text("StillWorking")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
 
-            if let countdown = state.countdown, let mode = state.displayMode {
-                Text(countdown)
-                    .font(.system(.largeTitle, design: .monospaced))
-                    .accessibilityLabel("Remaining time")
-                    .accessibilityValue(state.accessibleSummary)
-                Text("Active · \(mode.label)")
-            } else {
-                Text(state.status.label)
-            }
-
-            if let error = state.error {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            SessionSummary(session: session)
 
             Divider()
 
@@ -192,6 +230,7 @@ private struct SessionPanel: View {
                     durationField("Hours", text: $draft.hours)
                     durationField("Minutes", text: $draft.minutes)
                 }
+                .onSubmit { submitDraft(replacing: replacing) }
             }
 
             if case let .failure(problem) = selection {
@@ -203,26 +242,18 @@ private struct SessionPanel: View {
             Toggle("Keep display on", isOn: $draft.keepDisplayOn)
 
             HStack {
-                if state.status == .active {
-                    Button("Replace Timer") {
-                        if let validSelection {
-                            replace(validSelection)
-                        }
-                    }
-                    .disabled(validSelection == nil)
-                    Button("Stop", action: stop)
+                Button(replacing ? "Replace Timer" : "Start") {
+                    submitDraft(replacing: replacing)
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled((try? selection.get()) == nil)
+
+                if replacing {
+                    Button("Stop") { session.stop() }
                         .keyboardShortcut(".", modifiers: .command)
-                } else {
-                    Button("Start") {
-                        if let validSelection {
-                            start(validSelection)
-                        }
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(validSelection == nil)
                 }
                 Spacer()
-                Button(state.status == .active ? "Stop Timer and Quit" : "Quit", action: quit)
+                Button(replacing ? "Stop Timer and Quit" : "Quit", action: quit)
                     .keyboardShortcut("q", modifiers: .command)
             }
 
@@ -233,6 +264,16 @@ private struct SessionPanel: View {
         }
         .padding(16)
         .frame(width: 350)
+        .onReceive(session.$state.map { $0.status == .active }.removeDuplicates()) { isActive = $0 }
+    }
+
+    private func submitDraft(replacing: Bool) {
+        guard let selection = try? draft.selection.get() else { return }
+        if replacing {
+            session.replace(selection)
+        } else {
+            session.start(selection)
+        }
     }
 
     private func durationField(_ label: String, text: Binding<String>) -> some View {
@@ -243,6 +284,31 @@ private struct SessionPanel: View {
             TextField(label, text: text)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityLabel(label)
+        }
+    }
+}
+
+private struct SessionSummary: View {
+    @ObservedObject var session: SessionController
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 12) {
+            if let countdown = state.countdown, let mode = state.displayMode {
+                Text(countdown)
+                    .font(.system(.largeTitle, design: .monospaced))
+                    .accessibilityLabel("Remaining time")
+                    .accessibilityValue(state.accessibleSummary)
+                Text("Active · \(mode.label)")
+            } else {
+                Text(state.status.label)
+            }
+
+            if let error = state.error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
