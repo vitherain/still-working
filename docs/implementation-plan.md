@@ -37,8 +37,9 @@ polish may be refined without changing behavior.
   when the actual deadline is reached.
 - Show actual current status and active display mode separately from edited
   selections for the next/replacement session.
-- Provide the five confirmed presets and custom integer `Hours` and `Minutes`
-  fields. Label the display toggle `Keep display on`.
+- Provide the [duration presets](design.md#duration-and-remembered-selections)
+  and custom integer `Hours` and `Minutes` fields. Label the display toggle
+  `Keep display on`.
 - First use selects 30 minutes and display-on. Later starts prefill the last
   successfully used choices.
 - Require explicit `Start` or `Replace Timer`. Editing inputs alone does not

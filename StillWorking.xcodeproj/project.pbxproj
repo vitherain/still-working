@@ -12,6 +12,7 @@
 		100000000000000000000006 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = StillWorking.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		100000000000000000000007 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = StillWorkingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		100000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSelection.swift; sourceTree = "<group>"; };
+		100000000000000000000009 = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		200000000000000000000001 = {isa = PBXBuildFile; fileRef = 100000000000000000000001; };
 		200000000000000000000002 = {isa = PBXBuildFile; fileRef = 100000000000000000000002; };
 		200000000000000000000003 = {isa = PBXBuildFile; fileRef = 100000000000000000000003; };
@@ -19,6 +20,7 @@
 		200000000000000000000005 = {isa = PBXBuildFile; fileRef = 100000000000000000000005; };
 		200000000000000000000006 = {isa = PBXBuildFile; fileRef = 100000000000000000000008; };
 		200000000000000000000007 = {isa = PBXBuildFile; fileRef = 100000000000000000000008; };
+		200000000000000000000008 = {isa = PBXBuildFile; fileRef = 100000000000000000000009; };
 		300000000000000000000001 = {
 			isa = PBXGroup;
 			children = (300000000000000000000002, 300000000000000000000003, 300000000000000000000004);
@@ -26,7 +28,7 @@
 		};
 		300000000000000000000002 = {
 			isa = PBXGroup;
-			children = (100000000000000000000003, 100000000000000000000001, 100000000000000000000002, 100000000000000000000008, 100000000000000000000004);
+			children = (100000000000000000000003, 100000000000000000000001, 100000000000000000000002, 100000000000000000000008, 100000000000000000000009, 100000000000000000000004);
 			path = StillWorking;
 			sourceTree = "<group>";
 		};
@@ -54,10 +56,16 @@
 			files = (200000000000000000000004, 200000000000000000000005, 200000000000000000000007);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		400000000000000000000003 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (200000000000000000000008);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		500000000000000000000001 = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 600000000000000000000002;
-			buildPhases = (400000000000000000000001);
+			buildPhases = (400000000000000000000001, 400000000000000000000003);
 			buildRules = ();
 			dependencies = ();
 			name = StillWorking;
