@@ -17,7 +17,16 @@ struct SessionDraft {
         case halfHour = 30
         case oneHour = 60
         case twoHours = 120
+        case threeHours = 180
         case fourHours = 240
+        case fiveHours = 300
+        case sixHours = 360
+        case sevenHours = 420
+        case eightHours = 480
+        case nineHours = 540
+        case tenHours = 600
+        case elevenHours = 660
+        case twelveHours = 720
         case custom = 0
 
         var label: String {
@@ -25,9 +34,8 @@ struct SessionDraft {
             case .quarterHour: "15 minutes"
             case .halfHour: "30 minutes"
             case .oneHour: "1 hour"
-            case .twoHours: "2 hours"
-            case .fourHours: "4 hours"
             case .custom: "Custom"
+            default: "\(rawValue / 60) hours"
             }
         }
     }

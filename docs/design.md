@@ -60,7 +60,7 @@ behavior and do not prescribe the final UI wording.
 | D11 | Offer duration presets and custom entry in hours and minutes. Values and range are specified in D14. | Round 4, Q8: A. |
 | D12 | Show an active-state icon and remaining time directly in the menu bar; expose the active display mode and stop action on opening the app's menu/panel. | Round 4, Q9: A. |
 | D13 | Keep one active session. An explicit replacement action starts the newly selected duration from that moment with the selected display mode; it does not add to the old remaining time. | Round 4, Q10: A. |
-| D14 | Presets: 15 minutes, 30 minutes, 1 hour, 2 hours, and 4 hours. First-use duration: 30 minutes. Custom duration: 1 minute through 168 hours (7 days), in whole minutes. | Round 5, Q11: B. |
+| D14 | Initial presets: 15 minutes, 30 minutes, 1 hour, 2 hours, and 4 hours. First-use duration: 30 minutes. Custom duration: 1 minute through 168 hours (7 days), in whole minutes. | Round 5, Q11: B. [Issue #10](https://github.com/vitherain/still-working/issues/10) expanded the hourly presets. |
 | D15 | Remember the last used duration and display mode for preselection before manually starting a subsequent session. | Round 5, Q12: A. |
 | D16 | Explicitly quitting the application ends any active session and releases its protection. Merely dismissing the menu/panel leaves the session running. | Round 5, Q13: A. |
 | D17 | Count actual system sleep toward the session duration. On wake, continue only the unexpired remainder; if the duration elapsed during sleep, the session is finished. Do not wake the Mac at expiry. | Round 6, Q14: A. |
@@ -103,7 +103,7 @@ valid session and reporting the failure is required by the approved plan.
 
 ### Duration and remembered selections
 
-- Presets: 15 minutes, 30 minutes, 1 hour, 2 hours, and 4 hours.
+- Presets: 15 minutes, 30 minutes, and every whole hour from 1 through 12 hours.
 - First-use selection: 30 minutes, display-on mode.
 - Custom duration: 1 minute through 168 hours inclusive, in whole minutes.
 - The maximum is a product limit, not a claimed macOS restriction.
@@ -213,7 +213,7 @@ session behavior and unplugged battery floor.
    verified on the owner's Mac. Any developer-tool or local signing requirements
    are stated explicitly. Public-download testing on another Mac is deferred to
    the distribution milestone.
-8. All five presets and custom hours/minutes can start a session. Custom input
+8. All presets and custom hours/minutes can start a session. Custom input
    accepts 1 minute and 168 hours, includes intermediate whole-minute durations,
    and rejects values outside that range. Inline feedback and disabled start/
    replacement for invalid input are required by the approved implementation plan.

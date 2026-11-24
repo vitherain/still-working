@@ -196,24 +196,38 @@ final class SessionControllerTests: XCTestCase {
     }
 
     func testFirstUseAndPresetSelectionsStartExpectedTimers() throws {
-        let presets: [(SessionDraft.Preset, Duration)] = [
-            (.quarterHour, .seconds(900)), (.halfHour, .seconds(1_800)), (.oneHour, .seconds(3_600)),
-            (.twoHours, .seconds(7_200)), (.fourHours, .seconds(14_400))
+        let expectedPresets = [
+            ("15 minutes", 15), ("30 minutes", 30), ("1 hour", 60),
+            ("2 hours", 120), ("3 hours", 180), ("4 hours", 240), ("5 hours", 300),
+            ("6 hours", 360), ("7 hours", 420), ("8 hours", 480), ("9 hours", 540),
+            ("10 hours", 600), ("11 hours", 660), ("12 hours", 720)
         ]
+        let presets = SessionDraft.Preset.allCases
+        let preferences = testPreferences()
         let origin = ContinuousClock.now
-        let session = SessionController(power: FakePower(), preferences: testPreferences(), now: { origin })
+        let session = SessionController(power: FakePower(), preferences: preferences, now: { origin })
         var draft = SessionDraft()
 
+        XCTAssertEqual(presets.map(\.label), expectedPresets.map { $0.0 } + ["Custom"])
         XCTAssertEqual(draft.preset, .halfHour)
         XCTAssertTrue(draft.keepDisplayOn)
 
-        for (preset, advertisedDuration) in presets {
+        for (preset, (label, minutes)) in zip(presets, expectedPresets) {
             draft.preset = preset
-            session.start(try draft.selection.get())
+            let selection = try draft.selection.get()
+            let advertisedDuration = Duration.seconds(minutes * 60)
 
-            XCTAssertEqual(session.state.remainingTime, advertisedDuration)
+            session.start(selection)
+            XCTAssertEqual(session.state.remainingTime, advertisedDuration, label)
             XCTAssertEqual(session.state.displayMode, .displayOn)
+
+            session.replace(.standard)
+            session.replace(selection)
+            XCTAssertEqual(session.state.remainingTime, advertisedDuration, label)
             session.stop()
+
+            let relaunched = SessionController(power: FakePower(), preferences: preferences)
+            XCTAssertEqual(SessionDraft(selection: relaunched.rememberedSelection).preset, preset, label)
         }
     }
 

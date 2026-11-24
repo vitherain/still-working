@@ -20,8 +20,9 @@ The project is licensed under [MIT](LICENSE).
 
 ## Use the timer
 
-1. Open StillWorking from the menu bar. Choose a preset or select **Custom**
-   for a whole-minute duration from 1 minute to 168 hours.
+1. Open StillWorking from the menu bar. Choose 15 minutes, 30 minutes, or any
+   whole hour from 1 through 12 hours. Select **Custom** for a whole-minute
+   duration from 1 minute to 168 hours.
 2. Choose whether to **Keep display on** and select **Start**. Keeping the
    display on may delay automatic locking, depending on your settings.
 3. The menu bar shows the remaining time and the panel shows the active mode.
