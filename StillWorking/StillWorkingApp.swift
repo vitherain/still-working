@@ -265,7 +265,16 @@ private struct SessionPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Toggle("Keep display on", isOn: $draft.keepDisplayOn)
+            Toggle("Keep display on", isOn: Binding(
+                get: { draft.keepDisplayOn },
+                set: { keepDisplayOn in
+                    if session.state.status == .active {
+                        session.setDisplayMode(keepDisplayOn ? .displayOn : .computerOnly)
+                    } else {
+                        draft.keepDisplayOn = keepDisplayOn
+                    }
+                }
+            ))
 
             HStack {
                 Button(replacing ? "Replace Timer" : "Start") {
@@ -294,7 +303,12 @@ private struct SessionPanel: View {
         }
         .padding(16)
         .frame(width: 350)
-        .onReceive(session.$state.map { $0.status == .active }.removeDuplicates()) { isActive = $0 }
+        .onReceive(session.$state.map(\.displayMode).removeDuplicates()) { mode in
+            isActive = mode != nil
+            if let mode {
+                draft.keepDisplayOn = mode == .displayOn
+            }
+        }
     }
 
     private func submitDraft(replacing: Bool) {

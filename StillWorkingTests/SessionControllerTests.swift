@@ -160,6 +160,91 @@ final class SessionControllerTests: XCTestCase {
         XCTAssertTrue(power.owned.isEmpty)
     }
 
+    func testLiveDisplayChangesKeepTheSystemAssertionAndOriginalDeadline() throws {
+        let preferences = testPreferences()
+        let power = FakePower()
+        let origin = ContinuousClock.now
+        var currentTime = origin
+        let session = SessionController(power: power, preferences: preferences, now: { currentTime })
+        let computerOnly = SessionSelection(minutes: 15, displayMode: .computerOnly)
+        session.start(computerOnly)
+        let systemID = try XCTUnwrap(power.owned.keys.first)
+
+        currentTime = origin.advanced(by: .seconds(120))
+        session.setDisplayMode(.displayOn)
+        XCTAssertEqual(session.state.displayMode, .displayOn)
+        XCTAssertEqual(session.state.remainingTime, .seconds(780))
+        XCTAssertEqual(power.owned[systemID], .idleSystem)
+        XCTAssertEqual(Set(power.owned.values), [.idleSystem, .idleDisplay])
+        XCTAssertEqual(power.timeouts, [.seconds(900), .seconds(780)])
+        XCTAssertEqual(
+            SessionController(power: FakePower(), preferences: preferences).rememberedSelection,
+            SessionSelection(minutes: 15, displayMode: .displayOn)
+        )
+
+        currentTime = origin.advanced(by: .seconds(180))
+        session.setDisplayMode(.computerOnly)
+        XCTAssertEqual(session.state.displayMode, .computerOnly)
+        XCTAssertEqual(session.state.remainingTime, .seconds(720))
+        XCTAssertEqual(power.owned, [systemID: .idleSystem])
+        XCTAssertEqual(SessionController(power: FakePower(), preferences: preferences).rememberedSelection, computerOnly)
+
+        currentTime = origin.advanced(by: .seconds(900))
+        session.setDisplayMode(.displayOn)
+        XCTAssertEqual(session.state.status, .finished)
+        XCTAssertTrue(power.owned.isEmpty)
+        XCTAssertEqual(session.rememberedSelection, computerOnly)
+    }
+
+    func testFailedLiveDisplayChangesPreserveValidProtectionAndRememberedMode() {
+        for mode in [DisplayMode.computerOnly, .displayOn] {
+            let preferences = testPreferences()
+            let power = FakePower()
+            let origin = ContinuousClock.now
+            let session = SessionController(power: power, preferences: preferences, now: { origin })
+            let selection = SessionSelection(minutes: 15, displayMode: mode)
+            session.start(selection)
+            let originalAssertions = power.owned
+
+            if mode == .computerOnly {
+                power.refuse = .idleDisplay
+                session.setDisplayMode(.displayOn)
+            } else {
+                power.refuseRelease = .idleDisplay
+                session.setDisplayMode(.computerOnly)
+            }
+
+            XCTAssertEqual(session.state.status, .active)
+            XCTAssertEqual(session.state.displayMode, mode)
+            XCTAssertEqual(session.state.remainingTime, .seconds(900))
+            XCTAssertTrue(session.state.error?.contains("change the display mode") == true)
+            XCTAssertEqual(power.owned, originalAssertions)
+            XCTAssertEqual(SessionController(power: FakePower(), preferences: preferences).rememberedSelection, selection)
+        }
+    }
+
+    func testLiveDisplayToggleOnlyBlocksWhenStaleProtectionPreventsDisplaySleep() {
+        for staleKind in [IdleAssertion.idleSystem, .idleDisplay] {
+            let power = FakePower()
+            let session = SessionController(power: power, preferences: testPreferences())
+            session.start()
+            power.owned = power.owned.filter { $0.value == staleKind }
+            power.refuseRelease = staleKind
+            session.refresh(afterWake: true)
+
+            session.setDisplayMode(.computerOnly)
+
+            XCTAssertEqual(session.state.status, .active)
+            XCTAssertEqual(session.state.displayMode, staleKind == .idleSystem ? .computerOnly : .displayOn)
+            XCTAssertTrue(session.state.error?.contains("released") == true)
+            XCTAssertEqual(power.owned.values.contains(.idleDisplay), staleKind == .idleDisplay)
+
+            power.refuseRelease = nil
+            XCTAssertTrue(session.stop())
+            XCTAssertTrue(power.owned.isEmpty)
+        }
+    }
+
     func testCustomDurationStartsAtMinimumIntermediateAndMaximum() throws {
         let origin = ContinuousClock.now
         let session = SessionController(power: FakePower(), preferences: testPreferences(), now: { origin })
