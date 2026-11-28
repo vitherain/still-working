@@ -36,8 +36,20 @@ final class SessionController: ObservableObject {
 
     private struct ActiveSession {
         let deadline: ContinuousClock.Instant
-        let displayMode: DisplayMode
-        let assertions: [UInt32]
+        var protection: Protection
+    }
+
+    private struct Assertion: Hashable {
+        let id: UInt32
+        let kind: IdleAssertion
+    }
+
+    private struct Protection {
+        let system: Assertion
+        var display: Assertion?
+
+        var assertions: [Assertion] { [system] + (display.map { [$0] } ?? []) }
+        var mode: DisplayMode { display == nil ? .computerOnly : .displayOn }
     }
 
     @Published private(set) var state = State()
@@ -48,7 +60,7 @@ final class SessionController: ObservableObject {
     private let preferences: UserDefaults
     private let now: () -> ContinuousClock.Instant
     private var active: ActiveSession?
-    private var unreleasedAssertions = Set<UInt32>()
+    private var unreleasedAssertions = Set<Assertion>()
 
     init(
         power: any SessionPower, preferences: UserDefaults,
@@ -77,6 +89,45 @@ final class SessionController: ObservableObject {
         applySelection(selection)
     }
 
+    func setDisplayMode(_ mode: DisplayMode) {
+        guard var active, active.protection.mode != mode else { return }
+        let remaining = now().duration(to: active.deadline)
+        guard remaining > .zero else {
+            finish(.finished)
+            return
+        }
+        guard verifyPowerOrFinish() else { return }
+
+        let action = "change the display mode"
+        let cleanupError = release(unreleasedAssertions)
+        if mode == .computerOnly, let cleanupError,
+           unreleasedAssertions.contains(where: { $0.kind == .idleDisplay }) {
+            reportPreparationFailure(cleanupError, activeAction: action)
+            return
+        }
+        do {
+            if let display = active.protection.display {
+                try power.release(display.id)
+                active.protection.display = nil
+                guard verifyPowerOrFinish() else { return }
+            } else {
+                let display = try acquire(.idleDisplay, timeout: remaining)
+                guard verifyPowerOrFinish(releasing: [display]) else { return }
+                active.protection.display = display
+            }
+        } catch {
+            let details = [error.localizedDescription, cleanupError].compactMap { $0 }.joined(separator: " ")
+            reportPreparationFailure(details, activeAction: action)
+            return
+        }
+
+        self.active = active
+        updateRemainingTime(error: cleanupError)
+        if self.active != nil {
+            remember(SessionSelection(minutes: rememberedSelection.minutes, displayMode: mode))
+        }
+    }
+
     private func applySelection(_ selection: SessionSelection) {
         guard SessionSelection.validMinutes.contains(selection.minutes) else { return }
         guard verifyPowerOrFinish() else { return }
@@ -87,42 +138,46 @@ final class SessionController: ObservableObject {
 
         let duration = Duration.seconds(selection.minutes * 60)
         let deadline = now().advanced(by: duration)
-        let assertions: [UInt32]
+        let protection: Protection
         do {
-            assertions = try acquireProtection(mode: selection.displayMode, timeout: duration)
+            protection = try acquireProtection(mode: selection.displayMode, timeout: duration)
         } catch {
             reportPreparationFailure(error.localizedDescription)
             return
         }
 
-        guard verifyPowerOrFinish(releasing: assertions) else { return }
-        if let error = release(active?.assertions ?? []) {
+        guard verifyPowerOrFinish(releasing: protection.assertions) else { return }
+        if let error = release(active?.protection.assertions ?? []) {
             active = nil
-            finish(.inactive, error: "Could not replace the timer. \(error)", releasing: assertions)
+            finish(.inactive, error: "Could not replace the timer. \(error)", releasing: protection.assertions)
             return
         }
 
-        active = ActiveSession(deadline: deadline, displayMode: selection.displayMode, assertions: assertions)
+        active = ActiveSession(deadline: deadline, protection: protection)
         updateRemainingTime()
         if active != nil {
-            rememberedSelection = selection
-            preferences.set(
-                ["minutes": String(selection.minutes), "displayMode": selection.displayMode.rawValue],
-                forKey: Self.selectionPreferenceKey
-            )
+            remember(selection)
         }
     }
 
-    private func reportPreparationFailure(_ error: String) {
+    private func remember(_ selection: SessionSelection) {
+        rememberedSelection = selection
+        preferences.set(
+            ["minutes": String(selection.minutes), "displayMode": selection.displayMode.rawValue],
+            forKey: Self.selectionPreferenceKey
+        )
+    }
+
+    private func reportPreparationFailure(_ error: String, activeAction: String = "replace the timer") {
         guard let active else {
             setState(.inactive, error: error)
             return
         }
-        let message = "Could not replace the timer. \(error)"
+        let message = "Could not \(activeAction). \(error)"
         if now().duration(to: active.deadline) <= .zero {
             finish(.finished, error: message)
         } else if verifyPowerOrFinish() {
-            if active.assertions.allSatisfy(power.isActive) {
+            if active.protection.assertions.allSatisfy({ power.isActive($0.id) }) {
                 updateRemainingTime(error: message)
             } else {
                 finish(.inactive, error: "\(message) Previous timer protection could not be verified.")
@@ -145,14 +200,12 @@ final class SessionController: ObservableObject {
         }
         guard verifyPowerOrFinish() else { return }
 
-        if afterWake && !active.assertions.allSatisfy(power.isActive) {
+        if afterWake && !active.protection.assertions.allSatisfy({ power.isActive($0.id) }) {
             do {
-                let assertions = try acquireProtection(mode: active.displayMode, timeout: remaining)
-                guard verifyPowerOrFinish(releasing: assertions) else { return }
-                self.active = ActiveSession(
-                    deadline: active.deadline, displayMode: active.displayMode, assertions: assertions
-                )
-                updateRemainingTime(error: release(unreleasedAssertions.union(active.assertions)))
+                let protection = try acquireProtection(mode: active.protection.mode, timeout: remaining)
+                guard verifyPowerOrFinish(releasing: protection.assertions) else { return }
+                self.active = ActiveSession(deadline: active.deadline, protection: protection)
+                updateRemainingTime(error: release(unreleasedAssertions.union(active.protection.assertions)))
             } catch {
                 finish(.inactive, error: "Protection could not be restored. \(error.localizedDescription)")
             }
@@ -161,7 +214,7 @@ final class SessionController: ObservableObject {
         }
     }
 
-    private func verifyPowerOrFinish(releasing assertions: [UInt32] = []) -> Bool {
+    private func verifyPowerOrFinish(releasing assertions: [Assertion] = []) -> Bool {
         switch try? power.readPowerSource() {
         case .external:
             return true
@@ -178,16 +231,17 @@ final class SessionController: ObservableObject {
         return false
     }
 
-    private func acquireProtection(mode: DisplayMode, timeout: Duration) throws -> [UInt32] {
-        var assertions: [UInt32] = []
+    private func acquire(_ kind: IdleAssertion, timeout: Duration) throws -> Assertion {
+        Assertion(id: try power.acquire(kind, timeout: timeout), kind: kind)
+    }
+
+    private func acquireProtection(mode: DisplayMode, timeout: Duration) throws -> Protection {
+        let system = try acquire(.idleSystem, timeout: timeout)
         do {
-            assertions.append(try power.acquire(.idleSystem, timeout: timeout))
-            if mode == .displayOn {
-                assertions.append(try power.acquire(.idleDisplay, timeout: timeout))
-            }
-            return assertions
+            let display = mode == .displayOn ? try acquire(.idleDisplay, timeout: timeout) : nil
+            return Protection(system: system, display: display)
         } catch {
-            if let cleanupError = release(assertions) {
+            if let cleanupError = release([system]) {
                 throw ProtectionAcquisitionError(message: "\(error.localizedDescription) \(cleanupError)")
             }
             throw error
@@ -206,9 +260,9 @@ final class SessionController: ObservableObject {
 
     @discardableResult
     private func finish(
-        _ status: Status, error: String? = nil, releasing prepared: [UInt32] = []
+        _ status: Status, error: String? = nil, releasing prepared: [Assertion] = []
     ) -> Bool {
-        let assertions = unreleasedAssertions.union(active?.assertions ?? []).union(prepared)
+        let assertions = unreleasedAssertions.union(active?.protection.assertions ?? []).union(prepared)
         active = nil
         if let cleanupError = release(assertions) {
             let message = error.map { "\($0) \(cleanupError)" } ?? cleanupError
@@ -219,14 +273,14 @@ final class SessionController: ObservableObject {
         return true
     }
 
-    private func release(_ assertions: some Sequence<UInt32>) -> String? {
+    private func release(_ assertions: some Sequence<Assertion>) -> String? {
         var failures: [String] = []
-        for id in assertions {
+        for assertion in assertions {
             do {
-                try power.release(id)
-                unreleasedAssertions.remove(id)
+                try power.release(assertion.id)
+                unreleasedAssertions.remove(assertion)
             } catch {
-                unreleasedAssertions.insert(id)
+                unreleasedAssertions.insert(assertion)
                 failures.append(error.localizedDescription)
             }
         }
@@ -236,7 +290,7 @@ final class SessionController: ObservableObject {
 
     private func setState(_ status: Status, remainingTime: Duration? = nil, error: String? = nil) {
         let updated = State(
-            status: status, remainingTime: remainingTime, displayMode: active?.displayMode, error: error
+            status: status, remainingTime: remainingTime, displayMode: active?.protection.mode, error: error
         )
         if state != updated {
             state = updated

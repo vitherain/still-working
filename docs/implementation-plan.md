@@ -35,16 +35,16 @@ polish may be refined without changing behavior.
   one hour as `M:SS`, and longer ones as `H:MM:SS` with total hours through
   `168:00:00`. Round positive remaining fractions up for display; finish only
   when the actual deadline is reached.
-- Show actual current status and active display mode separately from edited
-  selections for the next/replacement session.
+- Show the current timer status and active display mode alongside the duration
+  selection for the next start or replacement.
 - Provide the [duration presets](design.md#duration-and-remembered-selections)
   and custom integer `Hours` and `Minutes` fields. Label the display toggle
   `Keep display on`.
 - First use selects 30 minutes and display-on. Later starts prefill the last
   successfully used choices.
-- Require explicit `Start` or `Replace Timer`. Editing inputs alone does not
-  alter the active session. Provide `Stop` and `Stop Timer and Quit` while active;
-  when inactive provide `Quit`.
+- Require explicit `Start` or `Replace Timer` to apply the selected duration.
+  While active, `Keep display on` applies immediately and preserves the deadline.
+  Provide `Stop` and `Stop Timer and Quit` while active. When inactive, provide `Quit`.
 - Natural expiry shows `Finished`; manual stop shows `Stopped`. Both remove the
   countdown and show the inactive icon. The app remains available, silently.
 - Reopening the running `.app` shows the same panel and session, without a second
@@ -58,10 +58,11 @@ polish may be refined without changing behavior.
   are invalid. Presets use the same validation.
 - Reject blank, fractional, negative, nonnumeric, and above-range input. Explain
   the issue inline and disable start/replacement until valid. Invalid draft
-  input leaves an existing session unchanged.
-- Save duration/mode only after successful start or replacement. Do not persist
-  an active deadline or restore sessions. Invalid stored preferences fall back
-  to first-use defaults.
+  input still allows a live display mode change.
+- Save the duration after successful start or replacement. Save the display
+  mode when a start, replacement, or live change successfully applies it.
+  A cold launch starts inactive. Invalid stored preferences fall back to
+  first-use defaults.
 - Start failure leaves the app inactive with a visible error. Replacement
   acquisition failure cleans up partial new resources and preserves the original
   running session, its deadline, and saved choices.
@@ -172,7 +173,8 @@ split. Test behavior and ownership rather than implementation snapshots.
 | Local build and launch | App builds; focused tests pass; double-click launch works on the owner's Mac. Document actual tools and build/install/remove steps. |
 | Duration | Test 1 minute, every preset, an intermediate value, and 168 hours. Reject zero, huge/overflow input, negatives, fractions, blanks, nonnumeric input, and 168h 1m. No seven-day wait is required. |
 | Timing | Controlled elapsed time covers progress, exact expiry, no negative countdown, sleep-inclusive advance, and independence from calendar clock changes. |
-| Replacement | Replace 20 minutes remaining with 30 minutes and another mode: one committed session, 30 minutes from replacement, correct mode. Draft edits alone have no effect. |
+| Replacement | With 20 minutes remaining, select 30 minutes and confirm the original countdown continues. Replace the timer and verify a single 30-minute session with the selected mode. |
+| Live display mode | Toggle both ways while the timer is active. Verify the checkbox, active mode, unchanged deadline and system assertion, and the addition or removal of the display assertion. Relaunch to verify the last applied mode and the last started duration. |
 | Errors | Fail first and second assertion acquisition, including during replacement: partial cleanup, original valid session preserved, visible error, saved choices unchanged. Cover expired IDs and unexpected release failures separately. |
 | Native assertions | Inspect app-owned idle system/display assertions in both modes, replacement, stop, expiry, quit, and process exit. Leave other applications' assertions untouched. |
 | Real idle behavior | Observe system staying awake during a supported session and display behavior in both modes under actual target settings. After release this app's protection disappears; immediate sleep is not required. |

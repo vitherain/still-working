@@ -6,9 +6,9 @@ the domain; user-facing wording is specified in the approved implementation plan
 ## Language
 
 **Keep-awake session**:
-A finite period of protection against automatic idle system sleep, with a
-chosen display mode. It ends at expiry, early stop, app quit, or the battery floor
-while unplugged.
+A finite period of protection against automatic idle system sleep. Its display
+mode can change during the session. It ends at expiry, early stop, app quit, or
+the battery floor while unplugged.
 _Avoid_: Permanent power setting
 
 **Computer-only mode**:

@@ -26,12 +26,14 @@ The project is licensed under [MIT](LICENSE).
 2. Choose whether to **Keep display on** and select **Start**. Keeping the
    display on may delay automatic locking, depending on your settings.
 3. The menu bar shows the remaining time and the panel shows the active mode.
-   Editing the panel leaves the running session as it is. **Replace Timer**
-   starts a new session for the full selected duration. **Stop** ends the
-   session early. Closing the panel leaves the timer running.
+   **Keep display on** applies immediately to the running timer and keeps its
+   original end time. **Replace Timer** starts a new session for the full
+   selected duration. **Stop** ends the session early. Closing the panel
+   leaves the timer running.
 
 A fresh launch starts with an inactive timer and preselects the last successful
-duration and mode. First use starts with 30 minutes and **Keep display on**
+duration and the most recently applied display mode. First use starts with
+30 minutes and **Keep display on**
 selected. In the panel, use Tab and Shift–Tab to move focus and Space to activate
 a focused control. Press Return or Enter to start or replace a timer with a
 valid duration when the Duration menu is closed.

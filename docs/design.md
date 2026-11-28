@@ -59,9 +59,9 @@ behavior and do not prescribe the final UI wording.
 | D10 | Target a locally usable application on the owner's Mac first. Defer public distribution, signing/notarization commitments, and membership cost decisions. | Round 3, Q7: C. |
 | D11 | Offer duration presets and custom entry in hours and minutes. Values and range are specified in D14. | Round 4, Q8: A. |
 | D12 | Show an active-state icon and remaining time directly in the menu bar; expose the active display mode and stop action on opening the app's menu/panel. | Round 4, Q9: A. |
-| D13 | Keep one active session. An explicit replacement action starts the newly selected duration from that moment with the selected display mode; it does not add to the old remaining time. | Round 4, Q10: A. |
+| D13 | Keep one active session. An explicit replacement starts the full selected duration from that moment. The display mode can change without replacing the session. | Round 4, Q10: A. Updated in [#17](https://github.com/vitherain/still-working/issues/17). |
 | D14 | Initial presets: 15 minutes, 30 minutes, 1 hour, 2 hours, and 4 hours. First-use duration: 30 minutes. Custom duration: 1 minute through 168 hours (7 days), in whole minutes. | Round 5, Q11: B. [Issue #10](https://github.com/vitherain/still-working/issues/10) expanded the hourly presets. |
-| D15 | Remember the last used duration and display mode for preselection before manually starting a subsequent session. | Round 5, Q12: A. |
+| D15 | Remember the last successfully started duration and the most recently applied display mode, including changes made during a session. | Round 5, Q12: A. Updated in [#17](https://github.com/vitherain/still-working/issues/17). |
 | D16 | Explicitly quitting the application ends any active session and releases its protection. Merely dismissing the menu/panel leaves the session running. | Round 5, Q13: A. |
 | D17 | Count actual system sleep toward the session duration. On wake, continue only the unexpired remainder; if the duration elapsed during sleep, the session is finished. Do not wake the Mac at expiry. | Round 6, Q14: A. |
 | D18 | After an application crash or Mac restart, open inactive with remembered input selections. Do not restore an interrupted session automatically or offer recovery. | Round 6, Q15: A. |
@@ -95,11 +95,11 @@ menu bar shows a distinct active icon and countdown. Opening its menu/panel show
 the current display mode and a stop control. The panel layout is specified in
 the approved plan; visual polish may be refined without changing behavior.
 
-To change an active session, the user explicitly replaces it: with 20 minutes
-remaining, replacing it with 30 minutes means 30 minutes from replacement, not
-50 minutes. The replacement uses the newly selected display mode. Replacement
-must not create multiple concurrent sessions. On failure, preserving the old
-valid session and reporting the failure is required by the approved plan.
+Changing the display mode takes effect immediately and preserves the session's
+end time. With 20 minutes remaining, replacing the timer with a 30-minute
+duration starts a new 30-minute session using the selected display mode.
+On failure, report the error and retain the previous session while its
+protection remains valid.
 
 ### Duration and remembered selections
 
